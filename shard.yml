@@ -1,0 +1,20 @@
+name: lattice-core
+version: 0.1.0
+
+dependencies:
+  slang:
+    github: jeromegn/slang
+  kemal:
+    github: kemalcr/kemal
+  kemal-session:
+    github: kemalcr/kemal-session
+    branch: master
+  baked_file_system:
+    github: schovi/baked_file_system
+
+authors:
+  - Jason Landry <jasonl99@gmail.com>
+
+crystal: 0.20.5
+
+license: MIT
