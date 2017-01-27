@@ -1,8 +1,12 @@
+require "./public_storage"  # this is required early so the files are loaded.
 module Lattice::Core
   class Application
 
-    get "/js/app.js" do |context|
-      PublicStorage.get("/js/app.js").read
+    # create a kemal route for every file in PublicStorage
+    PublicStorage.files.each do |file|
+      get file.path do |context|
+        PublicStorage.get(file.path).read
+      end
     end
 
     ws "/connected_object" do |socket|
