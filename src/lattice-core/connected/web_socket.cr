@@ -114,19 +114,40 @@ module Lattice::Connected
       end
     end
 
+    # OPTIMIZE this should also be used by extract_ids
+    def self.extract_id( from : String)
+      numbers = from.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
+      numbers.map(&.to_u64).sort.last
+    end
+
     # When an incoming message arrives, it must be from a particular object that has
     # already been subscribed to.  This processes the incoming message, determines which
     # object should receive it, and sends it to that object.
     def self.act ( action_data : Hash(String, JSON::Type), socket : HTTP::WebSocket )
-      subscribed_to(socket).each_value do |subscribed_object|
-        session_id = REGISTERED_SESSIONS[socket.object_id]?
-        subscribed_object.subscriber_action(action_data, session_id)
-      end
+      # action data is in the form of dom=>params 
+      # FIXME this is sending subscriber_actions to all subscribed actions,
+      # not just the one that was acted upon.
+      
+      # find the object for which the action happens
+      id = extract_id( action_data.first_key)
+      puts "id from #{action_data.first_key} is #{id}".colorize(:yellow)
+      acted_object = WebObject::INSTANCES[id]
+      session_id = REGISTERED_SESSIONS[socket.object_id]?
+      acted_object.subscriber_action(action_data, session_id)
+      # subscribed_to(socket).each_value do |subscribed_object|
+      #   session_id = REGISTERED_SESSIONS[socket.object_id]?
+      #   subscribed_object.subscriber_action(action_data, session_id)
+      # end
     end
 
     # Handle an incoming socket message
     def self.on_message(message, socket)
 
+      # we need to know which object received the message. 
+      # which will allow us to control sending to only assoicated
+      # connections.  Since a socket can be connected to multiple
+      # WebOjects, this will have to come from the message (payload)
+      # and be the id that was acted upon.
       payload = validate_payload(message)
       action        = payload.as_h.first_key
       action_params = payload[action].as_h

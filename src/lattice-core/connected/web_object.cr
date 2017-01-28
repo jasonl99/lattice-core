@@ -3,6 +3,7 @@ module Lattice::Connected
   class WebObject
     INSTANCES = Hash(UInt64, self).new      # all instances of any WebObject, across all subclasses
     @@instances = Hash(String, UInt64).new  # individual instances of this class (CardGame, City, etc)
+    property version = 0
     class_property instances
 
     property subscribers = [] of HTTP::WebSocket   # Each instance has its own subcribers.
@@ -14,6 +15,19 @@ module Lattice::Connected
     end
 
     def content
+    end
+
+    def update( change : Hash(String,String | Int32) )
+      self.version +=1
+      msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
+      subscribers.each &.send(msg.to_json)
+    end
+
+    # Converts a dom-style id and extracts that last number from it
+    # for example, "card-3" returns 3.
+    def index_from( source : String, max = 100 ) 
+      id = source.split("-").last.try &.to_i32
+      id if id && id <= max && id >= 0
     end
 
     # a new thing must have a name, and that name must be unique so we can
@@ -65,18 +79,32 @@ module Lattice::Connected
 
     # this creates a connection back to the serverm immediately calls back with a session_id
     # and the element ids to which to subscribe.
+    # It then creates event listeners for actions on subscribed objects, currently
+    # just click events (more will come)
     def self.javascript(session_id : String, target : _)
       javascript = <<-JS
-      #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
-      #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
-      #{js_var}.onopen = function(evt) {
-        evt.target.send( JSON.stringify( 
-          {"subscribe":{sessionID: "#{session_id}",
-           ids:  [].map.call(document
-            .querySelectorAll("[data-connect]"),
-              function(el){return el.id})   }}
-           ));
-      }
+        #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
+        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
+        #{js_var}.onopen = function(evt) {
+          evt.target.send( JSON.stringify( 
+            {"subscribe":{sessionID: "#{session_id}",
+             ids:  [].map.call(document
+              .querySelectorAll("[data-version]"),
+                function(el){return el.id})   }}
+             ));
+        };
+
+        document.addEventListener("DOMContentLoaded", function(evt) {
+          listen = document.querySelectorAll("[data-version]");
+          for(var i=0; i<listen.length; i++){
+            listen[i].addEventListener("click", function(evt) {
+            console.log("sending click even for ", evt.target.id)
+            act = {}; act[evt.target.id] = "click"
+             #{js_var}.send(JSON.stringify({"act":act}))
+            })
+          }
+        });
+
       JS
     end
 
