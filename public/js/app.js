@@ -26,8 +26,9 @@ function modifyDOM(domData) {
         case "insert":
           el.insertAdjacentHTML('beforeend',domData.value)
           break;
-      }}
-    el.closest("[data-version]").setAttribute("data-version",domData.version)
+      }
+      el.closest("[data-version]").setAttribute("data-version",domData.version)
+    }
   } else {
       console.log("cound not locate element " + domData.id)
   }
