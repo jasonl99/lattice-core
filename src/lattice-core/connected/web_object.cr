@@ -17,6 +17,12 @@ module Lattice::Connected
     def content
     end
 
+    def update_attribute( change : Hash(String,String | Int32) )
+      self.version +=1
+      msg = { "dom"=>change.merge({"action"=>"update_attribute", "version"=>version}) }
+      subscribers.each &.send(msg.to_json)
+    end
+
     def update( change : Hash(String,String | Int32) )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
@@ -81,6 +87,10 @@ module Lattice::Connected
     # and the element ids to which to subscribe.
     # It then creates event listeners for actions on subscribed objects, currently
     # just click events (more will come)
+    # FIXME we have a problem right now when the same object is on the page twice: it only
+    # updates one of them since document.getElementById only returns the first match.
+    # this can be solved by using a class instead of an id (so cardgame-12312-card-2 is the
+    # class, not the id.
     def self.javascript(session_id : String, target : _)
       javascript = <<-JS
         #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");

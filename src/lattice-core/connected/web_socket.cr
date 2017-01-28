@@ -100,6 +100,7 @@ module Lattice::Connected
         WebObject::INSTANCES[id].subscribe(socket)
       end
       memory_used
+
     end
 
     # a debugging aid to show how much data we have laying around
@@ -117,7 +118,11 @@ module Lattice::Connected
     # OPTIMIZE this should also be used by extract_ids
     def self.extract_id( from : String)
       numbers = from.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
-      numbers.map(&.to_u64).sort.last
+      begin
+        numbers.map(&.to_u64).sort.last
+      rescue
+        nil
+      end
     end
 
     # When an incoming message arrives, it must be from a particular object that has
@@ -129,11 +134,11 @@ module Lattice::Connected
       # not just the one that was acted upon.
       
       # find the object for which the action happens
-      id = extract_id( action_data.first_key)
-      puts "id from #{action_data.first_key} is #{id}".colorize(:yellow)
-      acted_object = WebObject::INSTANCES[id]
-      session_id = REGISTERED_SESSIONS[socket.object_id]?
-      acted_object.subscriber_action(action_data, session_id)
+      if ( id = extract_id( action_data.first_key) )
+        acted_object = WebObject::INSTANCES[id]
+        session_id = REGISTERED_SESSIONS[socket.object_id]?
+        acted_object.subscriber_action(action_data, session_id)
+      end
       # subscribed_to(socket).each_value do |subscribed_object|
       #   session_id = REGISTERED_SESSIONS[socket.object_id]?
       #   subscribed_object.subscriber_action(action_data, session_id)
