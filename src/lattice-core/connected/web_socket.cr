@@ -23,7 +23,7 @@ module Lattice::Connected
   # system accepts only one command per message; the first key and value are used as that command.
   abstract class WebSocket
 
-    VALID_ACTIONS = %w(subscribe act)
+    VALID_ACTIONS = %w(subscribe click input pointer submit)
     REGISTERED_SESSIONS = {} of UInt64=>String
 
     # Verify that an incoming subscriber request contains valid data
@@ -34,14 +34,10 @@ module Lattice::Connected
     # * All keys (the actions) must be in VALID_ACTIONS
     # * JSON.parse is unable to parse the incoming message
     def self.validate_payload(message : String)
-       begin
-         return_val = JSON.parse(message)
-         payload = return_val.as_h
-         raise "Invalid actions #{payload.keys - VALID_ACTIONS}" unless (payload.keys - VALID_ACTIONS).empty?    
-         raise "Too many actions" unless payload.keys.size == 1
-       rescue
-         raise "Error validating and parsing socket message : #{message}"
-      end
+      return_val = JSON.parse(message)
+      payload = return_val.as_h
+      raise "Invalid actions #{payload.keys - VALID_ACTIONS}" unless (payload.keys - VALID_ACTIONS).empty?    
+      raise "Too many actions" unless payload.keys.size == 1
       return_val
     end
 
@@ -154,14 +150,28 @@ module Lattice::Connected
       # WebOjects, this will have to come from the message (payload)
       # and be the id that was acted upon.
       payload = validate_payload(message)
+      # puts "payload revd: #{payload}"
+      # return
       action        = payload.as_h.first_key
       action_params = payload[action].as_h
 
+
+      # actions are basically ALLOWED_ACTIONS
       case action
       when "subscribe"
         subscribe(action_params, socket)
-      when "act"
+      # when "act"
+      #   puts "act: #{action_params}"
+      #   act(action_params, socket)
+      when "click"
+        puts "act: #{action_params}"
         act(action_params, socket)
+      when "submit"
+        puts "Form submission #{action_params}"
+      when "pointer"
+        puts "pointer #{action_params}"
+      when "input"
+        puts "input change #{action_params}"
       else
         raise "no behavior defined for '#{action}' with parameters #{action_params}"
       end

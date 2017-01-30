@@ -29,6 +29,12 @@ module Lattice::Connected
       subscribers.each &.send(msg.to_json)
     end
 
+    def insert( change : Hash(String,String | Int32) )
+      self.version +=1
+      msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
+      subscribers.each &.send(msg.to_json)
+    end
+
     # Converts a dom-style id and extracts that last number from it
     # for example, "card-3" returns 3.
     def index_from( source : String, max = 100 ) 
@@ -73,7 +79,8 @@ module Lattice::Connected
     end
 
     def self.js_var
-      "#{self.to_s.split("::").last.downcase}Socket"
+      # "#{self.to_s.split("::").last.downcase}Socket"
+      "connected_object"
     end
    
     # The dom id .i.e <div id="abc"> for this object.  When later parsing this value
@@ -104,16 +111,7 @@ module Lattice::Connected
              ));
         };
 
-        document.addEventListener("DOMContentLoaded", function(evt) {
-          listen = document.querySelectorAll("[data-version]");
-          for(var i=0; i<listen.length; i++){
-            listen[i].addEventListener("click", function(evt) {
-            console.log("sending click even for ", evt.target.id)
-            act = {}; act[evt.target.id] = "click"
-             #{js_var}.send(JSON.stringify({"act":act}))
-            })
-          }
-        });
+        connectEvents(#{js_var});
 
       JS
     end

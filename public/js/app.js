@@ -1,3 +1,104 @@
+// This takes events specificed in the data-track attribute 
+// and maps to native javascript addEventListener events, 
+// modifying the behavior as needed.
+function handleEvent(event_type, el, socket) {
+  switch (event_type) {
+    case "click":
+      el.addEventListener("click", function(evt) {
+        msg = {}
+        msg[el.id] = {action: "clicked"}
+        socket.send(JSON.stringify({click: msg}))
+      })
+    case "input":
+      el.addEventListener("input", function(evt) {
+        msg = {}
+        msg[el.id] = {value: el.value}
+        socket.send(JSON.stringify({input: msg}))
+      })
+    case "pointerleave":
+      el.addEventListener("pointerleave", function(evt) {
+        console.log( evt)
+        msg = {}
+        msg[el.id] = {pointerleave: true}
+        socket.send(JSON.stringify({pointer: msg}))
+      })
+    case "pointerenter":
+      el.addEventListener("pointerenter", function(evt) {
+        console.log( evt)
+        msg = {}
+        msg[el.id] =  {pointerenter: true}
+        socket.send(JSON.stringify({pointer: msg}))
+      })
+    case "submit":
+      el.addEventListener("submit", function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        msg = {}
+        msg[el.id] = formToJSON(el);
+        socket.send(JSON.stringify({submit: msg}))
+        el.reset();  //TODO This is just a quick method of clearing the form for now
+        console.log(msg);
+      })
+      break;
+  }
+}
+
+// given a form, this returns the data contained therein as
+// a JSON object, with keys the element names, and the values
+// the actual form values.
+function formToJSON(form) {
+  return [].reduce.call(form.elements, (data, element) => {
+    data[element.name] = element.value;
+    return data;
+  }, {});
+}
+
+// given a string, return a trimmed array of items separated by commas
+function getItems(item_list) {
+  return item_list.split(",").filter(function(e){return e.trim()})
+}
+
+// given an element, set up javascript handlers for
+// each event type found.  data-track is a comma-delimited
+// list of events that map loosely to native javascript
+// events recognized by addEventHandler, but we can also 
+// define our own.
+// i.e. <input type="text" data-track="click,keypress">
+function handleElementEvents(el,socket) {
+  event_types = getItems(el.getAttribute("data-track"));
+  for (var i=0; i<event_types.length;i++) {
+    handleEvent(event_types[i],el, socket)
+  }
+}
+
+// sets up event tracking for a trackable object.  The websocket
+// already will send data as needed _to_ this object from the server
+// This finds nodes within the object that send data back to the
+// server (clicks, form submits, etc)
+function connectElement(el, socket) {
+  evented_elements = el.querySelectorAll("[data-track]")
+  for (var i=0; i<evented_elements.length; i++) {
+    handleElementEvents(evented_elements[i], socket);
+  }
+}
+
+// Wait until the DOM is loaded, then find all objects
+// with a data-version attribute (our current way of
+// indicating that this object communicates over a websocket).
+// For each such element we find, call connectElement.
+// which establishes _outgoing_ socket communication for events
+// that happen to this element and its child nodes.
+function connectEvents(socket) {
+  document.addEventListener("DOMContentLoaded", function(evt) {
+    connected = document.querySelectorAll("[data-version]")
+    for (var i=0; i<connected.length; i++) {
+      connectElement(connected[i], socket);
+    }
+  })
+}  
+
+
+// handle an incoming message over the socket
 function handleSocketMessage(message) {
   payload = JSON.parse(message);
   if ("dom" in payload) {
@@ -6,7 +107,10 @@ function handleSocketMessage(message) {
 }
 
 
+
+// modify the dom based on the imformation contained in domData
 function modifyDOM(domData) {
+  console.log(domData)
   if (matches = document.querySelectorAll("#" + domData.id)) {
     for (var i=0; i<matches.length; i++) {
       el = matches[i];
@@ -25,6 +129,7 @@ function modifyDOM(domData) {
           break;
         case "insert":
           el.insertAdjacentHTML('beforeend',domData.value)
+          el.scrollTop = el.scrollHeight;
           break;
       }
       el.closest("[data-version]").setAttribute("data-version",domData.version)
