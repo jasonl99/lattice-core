@@ -1,44 +1,41 @@
-// This takes events specificed in the data-track attribute 
-// and maps to native javascript addEventListener events, 
-// modifying the behavior as needed.
+function baseEvent(evt,event_action, action_params = {}) {
+  id = evt.target.getAttribute("data-item")
+  msg = {}
+  msg[id] = {action: event_action, params: action_params}
+  return msg
+
+}
+// outgoing events look like this:
+// {"some-data-item": {action: "click", params: {x:123, y:232}}}
+// On the server, the key is parsed for a valid, instantiated connectedObject
+// that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket) {
   switch (event_type) {
     case "click":
       el.addEventListener("click", function(evt) {
-        id = evt.target.getAttribute("data-item")
-        msg = {mouse: {} }
-        msg.mouse[id] = {action: "click"}
+        msg = baseEvent(evt,"click")
         socket.send(JSON.stringify(msg))
       })
     case "input":
       el.addEventListener("input", function(evt) {
-        id = evt.target.getAttribute("data-item")
-        msg = {input:{}}
-        msg.input[id] = {action: "input", value: el.value}
+        msg = baseEvent(evt,"input", {value: el.value})
         socket.send(JSON.stringify(msg))
       })
     case "mouseleave":
       el.addEventListener("mouseleave", function(evt) {
-        id = evt.target.getAttribute("data-item")
-        msg = {mouse: {}}
-        msg.mouse[id] = {action: "mouseleave"}
+        msg = baseEvent(evt,"mouseleave")
         socket.send(JSON.stringify(msg))
       })
     case "mouseenter":
       el.addEventListener("mouseenter", function(evt) {
-        id = evt.target.getAttribute("data-item")
-        msg = {mouse:{}}
-        msg.mouse[id] =  {action: "mouseenter"}
+        msg = baseEvent(evt,"mouseenter")
         socket.send(JSON.stringify(msg))
       })
     case "submit":
       el.addEventListener("submit", function(evt) {
-        id = evt.target.getAttribute("data-item")
         evt.preventDefault();
         evt.stopPropagation();
-        msg = {submit:{}}
-        msg.submit[id] = formToJSON(el);
-        msg.submit[id]["action"] = "submit"
+        msg = baseEvent(evt, "submit", formToJSON(el))
         socket.send(JSON.stringify(msg))
         el.reset();  //TODO This is just a quick method of clearing the form for now
       })

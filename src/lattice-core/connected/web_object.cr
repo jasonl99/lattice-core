@@ -58,18 +58,37 @@ module Lattice::Connected
     end
 
     # A subscriber, with the _session_id_ given, has oassed in an action
-    def subscriber_action(data, session_id)
-      puts "#{self.class}(#{self.name}) just received #{data} from session #{session_id}"
+    def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?)
+    #def subscriber_action(data, session_id)
+      if session_id
+        puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
+      else
+        puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
+      end
     end
+
+
+    # def subscriber_action(data, session_id = nil)
+    #   puts "#{self.class}(#{self.name}) just received #{data} from session #{session_id}"
+    # end
 
     # a socket has requested a subscription to this object.  This means it will send & receive
     # messages across the _socket_ passed.  It is the initial handshake to a user  
     # It is the initial handshake between client and server.
-    def subscribe( socket : HTTP::WebSocket )
+    # def subscribe( socket : HTTP::WebSocket )
+    #   unless subscribers.includes? socket
+    #     subscribers << socket
+    #     session_id = Lattice::Connected::WebSocket::REGISTERED_SESSIONS[socket.object_id]?  
+    #     subscribed session_id, socket if session_id
+    #   end
+    # end
+    def subscribe( socket : HTTP::WebSocket , session_id : String?)
       unless subscribers.includes? socket
+        puts "#{self.name} subscribed by #{session_id}".colorize(:green)
         subscribers << socket
-        session_id = Lattice::Connected::WebSocket::REGISTERED_SESSIONS[socket.object_id]?  
         subscribed session_id, socket if session_id
+      else
+        puts "socket #{socket.object_id} already in #{subscribers.map &.object_id}".colorize(:red)
       end
     end
 
@@ -100,6 +119,9 @@ module Lattice::Connected
     def subscribed( session_id : String, socket : HTTP::WebSocket)
     end
 
+    def subscribed?( socket : HTTP::WebSocket)
+      subscribers.includes? socket
+    end
     # delete a subscription for _socket_
     def unsubscribe( socket : HTTP::WebSocket)
       subscribers.delete(socket)
@@ -142,18 +164,29 @@ module Lattice::Connected
         #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {
-          evt.target.send( JSON.stringify( 
-            {"subscribe":{sessionID: "#{session_id}",
-             ids:  [].map.call(document
-              .querySelectorAll("[data-version]"),
-                function(el){return el.getAttribute("data-item")})   }}
-             ));
+            // on connection of this socket, send subscriber requests
+            subs = document.querySelectorAll("[data-version]")
+            for (var i=0;i<subs.length;i++){
+              msg = {}
+              msg[ subs[i].getAttribute("data-item") ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+              // console.log(msg
+              evt.target.send(JSON.stringify(msg))
+            }
+
         };
 
         connectEvents(#{js_var});
 
       JS
       #          function(el){return el.id})   }}
+      # old js:
+      # //          evt.target.send( JSON.stringify( 
+      # //            {"subscribe":{sessionID: "#{session_id}",
+      # //             ids:  [].map.call(document
+      # //              .querySelectorAll("[data-version]"),
+      # //               function(el){return el.getAttribute("data-item")})   }}
+      # //             ));
+
     end
 
     def self.subclasses

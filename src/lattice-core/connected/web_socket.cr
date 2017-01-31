@@ -26,19 +26,37 @@ module Lattice::Connected
     VALID_ACTIONS = %w(subscribe click input mouse submit)
     REGISTERED_SESSIONS = {} of UInt64=>String
 
-    # Verify that an incoming subscriber request contains valid data
-    # an incoming message is a JSON object with a single key, which represents the action to take.
-    # We verify this action against the WebSocket::VALID_ACTIONS.
-    # an exception is three cases:
-    # * More than one key is in the json sent (more than one action)
-    # * All keys (the actions) must be in VALID_ACTIONS
-    # * JSON.parse is unable to parse the incoming message
-    def self.validate_payload(message : String)
+    # An incoming message is in the form
+    #    {"cardgame-123439291" : {"action":"subscribe", params: {}}}
+    #    {"cardgame-123492092-hand-3-card1" : {"action":"click", params: {x:0,y:0}}}
+    # The message is only valid if
+    # * A valid instantiated, subscribed ConnectedObject is identified from the key (data-item in the DOM)
+    # * Only on such message is received 
+    def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
       payload = return_val.as_h
-      raise "Invalid actions #{payload.keys - VALID_ACTIONS}" unless (payload.keys - VALID_ACTIONS).empty?    
+      params = payload.first_value
+      dom_item = payload.first_key
+      if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
+        # puts "Session #{session_id} is registered to this socket"
+        # if (session = Session.get session_id)
+        #   puts "The user on this session is #{session.string?("name")}"
+        # end
+      end
+      if (data_item = self.extract_id?(dom_item))
+        if (target = Lattice::Connected::WebObject::INSTANCES[data_item]?)
+          # if target.subscribed? socket
+          #   puts "The socket is subscribed to the target"
+          # end
+        end
+      end
+      result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
+      # puts "Result is #{result}"
+      # puts "Result of validation: #{result}"
+      # raise "Invalid actions #{payload.keys - VALID_ACTIONS}" unless (payload.keys - VALID_ACTIONS).empty?    
       raise "Too many actions" unless payload.keys.size == 1
-      return_val
+      #return_val
+      result
     end
 
     # Given a session_id, return true if the Session instance is valid
@@ -112,7 +130,7 @@ module Lattice::Connected
     end
 
     # OPTIMIZE this should also be used by extract_ids
-    def self.extract_id( from : String)
+    def self.extract_id?( from : String)
       numbers = from.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
       begin
         numbers.map(&.to_u64).sort.last
@@ -130,7 +148,7 @@ module Lattice::Connected
       # not just the one that was acted upon.
       
       # find the object for which the action happens
-      if ( id = extract_id( action_data.first_key) )
+      if ( id = extract_id?( action_data.first_key) )
         acted_object = WebObject::INSTANCES[id]
         session_id = REGISTERED_SESSIONS[socket.object_id]?
         acted_object.subscriber_action(action_data, session_id)
@@ -144,37 +162,62 @@ module Lattice::Connected
     # Handle an incoming socket message
     def self.on_message(message, socket)
 
-      # we need to know which object received the message. 
-      # which will allow us to control sending to only assoicated
-      # connections.  Since a socket can be connected to multiple
-      # WebOjects, this will have to come from the message (payload)
-      # and be the id that was acted upon.
-      payload = validate_payload(message)
-      # puts "payload revd: #{payload}"
-      # return
-      action        = payload.as_h.first_key
-      action_params = payload[action].as_h
+      payload = validate_payload(message, socket)
 
-
-      # actions are basically VALID_ACTIONS
-      # TODO there should be a check that all valid actions have a when statement somehow.
-      case action
-      when "subscribe"
-        subscribe(action_params, socket)
-      # when "act"
-      #   puts "act: #{action_params}"
-      #   act(action_params, socket)
-      when "submit"
-        puts "Form submission #{action_params}"
-        act(action_params, socket)
-      when "mouse"
-        puts "mouse #{action_params}"
-        act(action_params, socket)
-      when "input"
-        puts "input change #{action_params}"
-      else
-        raise "no behavior defined for '#{action}' with parameters #{action_params}"
+      if (target = payload["target"]?)
+        target = target.as(Lattice::Connected::WebObject)
+        params = payload["params"].as(Hash(String,JSON::Type))
+        if params["action"] == "subscribe"
+          # in this case, the session_id isn't established yet, but it is in the params as session_id.
+          # which came directlry from the browser (we haven't tied the two together yet
+          session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
+          REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+          target.subscribe(socket, session_id.as(String | Nil))
+        else
+          session_id = payload["session_id"]?
+            target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil)) if target.subscribed?(socket)
+          #target.subscriber_action(params, session_id.as(String)) if target.subscribed?(socket)
+          # if (session_id = payload["session_id"]?)
+          # end
+        end
       end
+
+
+
+      # NEW: validate_payload now returns session, target, and action
+
+      # target = payload.as_h.first_key
+      # action = payload[target].as_h
+      
+      # begin
+      #   puts "target: #{target} / action: #{action["action"]} / params: #{action["params"]}"
+      # rescue msg
+      #   puts "Errror: #{msg}"
+      # end
+
+      # action        = payload.as_h.first_key
+      # action_params = payload[action].as_h
+
+
+      # # actions are basically VALID_ACTIONS
+      # # TODO there should be a check that all valid actions have a when statement somehow.
+      # case action
+      # when "subscribe"
+      #   subscribe(action_params, socket)
+      # # when "act"
+      # #   puts "act: #{action_params}"
+      # #   act(action_params, socket)
+      # when "submit"
+      #   puts "Form submission #{action_params}"
+      #   act(action_params, socket)
+      # when "mouse"
+      #   puts "mouse #{action_params}"
+      #   act(action_params, socket)
+      # when "input"
+      #   puts "input change #{action_params}"
+      # else
+      #   raise "no behavior defined for '#{action}' with parameters #{action_params}"
+      # end
 
 
     end
