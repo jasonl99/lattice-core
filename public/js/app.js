@@ -5,39 +5,41 @@ function handleEvent(event_type, el, socket) {
   switch (event_type) {
     case "click":
       el.addEventListener("click", function(evt) {
+        id = evt.target.getAttribute("data-item")
         msg = {}
-        msg[el.id] = {action: "clicked"}
+        msg[id] = {click: "true"}
         socket.send(JSON.stringify({click: msg}))
       })
     case "input":
       el.addEventListener("input", function(evt) {
+        id = evt.target.getAttribute("data-item")
         msg = {}
-        msg[el.id] = {value: el.value}
+        msg[id] = {value: el.value}
         socket.send(JSON.stringify({input: msg}))
       })
-    case "pointerleave":
-      el.addEventListener("pointerleave", function(evt) {
-        console.log( evt)
+    case "mouseleave":
+      el.addEventListener("mouseleave", function(evt) {
+        id = evt.target.getAttribute("data-item")
         msg = {}
-        msg[el.id] = {pointerleave: true}
-        socket.send(JSON.stringify({pointer: msg}))
+        msg[id] = {mouseleave: true}
+        socket.send(JSON.stringify({mouse: msg}))
       })
-    case "pointerenter":
-      el.addEventListener("pointerenter", function(evt) {
-        console.log( evt)
+    case "mouseenter":
+      el.addEventListener("mouseenter", function(evt) {
+        id = evt.target.getAttribute("data-item")
         msg = {}
-        msg[el.id] =  {pointerenter: true}
-        socket.send(JSON.stringify({pointer: msg}))
+        msg[id] =  {mouseenter: true}
+        socket.send(JSON.stringify({mouse: msg}))
       })
     case "submit":
       el.addEventListener("submit", function(evt) {
+        id = evt.target.getAttribute("data-item")
         evt.preventDefault();
         evt.stopPropagation();
         msg = {}
-        msg[el.id] = formToJSON(el);
+        msg[id] = formToJSON(el);
         socket.send(JSON.stringify({submit: msg}))
         el.reset();  //TODO This is just a quick method of clearing the form for now
-        console.log(msg);
       })
       break;
   }
@@ -110,8 +112,9 @@ function handleSocketMessage(message) {
 
 // modify the dom based on the imformation contained in domData
 function modifyDOM(domData) {
-  console.log(domData)
-  if (matches = document.querySelectorAll("#" + domData.id)) {
+  // if (matches = document.querySelectorAll("#" + domData.id)) {
+  console.log( "Domdata: ",domData)
+  if (matches = document.querySelectorAll("[data-item='" + domData.id + "']" )) {
     for (var i=0; i<matches.length; i++) {
       el = matches[i];
       switch (domData.action) {
@@ -121,9 +124,9 @@ function modifyDOM(domData) {
         case "update_attribute":
           el.setAttribute(domData.attribute, domData.value)
           break;
-        case "attribute":
-          el.innerHTML = domData.value
-          break;
+        // case "attribute":
+        //   el.innerHTML = domData.value
+        //   break;
         case "delete":
           el.parentNode.removeChild(el)
           break;

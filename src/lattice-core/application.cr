@@ -5,7 +5,9 @@ module Lattice::Core
     # create a kemal route for every file in PublicStorage
     PublicStorage.files.each do |file|
       get file.path do |context|
-        PublicStorage.get(file.path).read
+        # file = PublicStorage.get(file.path)
+        context.response.content_type = file.mime_type
+        file.read
       end
     end
 

@@ -23,7 +23,7 @@ module Lattice::Connected
   # system accepts only one command per message; the first key and value are used as that command.
   abstract class WebSocket
 
-    VALID_ACTIONS = %w(subscribe click input pointer submit)
+    VALID_ACTIONS = %w(subscribe click input mouse submit)
     REGISTERED_SESSIONS = {} of UInt64=>String
 
     # Verify that an incoming subscriber request contains valid data
@@ -156,7 +156,8 @@ module Lattice::Connected
       action_params = payload[action].as_h
 
 
-      # actions are basically ALLOWED_ACTIONS
+      # actions are basically VALID_ACTIONS
+      # TODO there should be a check that all valid actions have a when statement somehow.
       case action
       when "subscribe"
         subscribe(action_params, socket)
@@ -168,7 +169,7 @@ module Lattice::Connected
         act(action_params, socket)
       when "submit"
         puts "Form submission #{action_params}"
-      when "pointer"
+      when "mouse"
         puts "pointer #{action_params}"
       when "input"
         puts "input change #{action_params}"

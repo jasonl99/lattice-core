@@ -17,19 +17,27 @@ module Lattice::Connected
     def content
     end
 
-    def update_attribute( change : Hash(String,String | Int32) )
+
+    # either the session & the value exist or its nil
+    def session_string( session_id : String, value_of : String)
+      if (session = Session.get(session_id)) && (value = session.string?(value_of) )
+        return value
+      end
+    end
+
+    def update_attribute( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update_attribute", "version"=>version}) }
       subscribers.each &.send(msg.to_json)
     end
 
-    def update( change : Hash(String,String | Int32) )
+    def update( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
       subscribers.each &.send(msg.to_json)
     end
 
-    def insert( change : Hash(String,String | Int32) )
+    def insert( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
       subscribers.each &.send(msg.to_json)
@@ -58,7 +66,38 @@ module Lattice::Connected
     # messages across the _socket_ passed.  It is the initial handshake to a user  
     # It is the initial handshake between client and server.
     def subscribe( socket : HTTP::WebSocket )
-      subscribers << socket unless subscribers.includes? socket
+      unless subscribers.includes? socket
+        subscribers << socket
+        session_id = Lattice::Connected::WebSocket::REGISTERED_SESSIONS[socket.object_id]?  
+        subscribed session_id, socket if session_id
+      end
+    end
+
+    # This is a key piece for handling idividualization of a connected object.
+    # A socket must subscribe to connected object, and #subscribe
+    # automatically looks up the session_id for the socket, and if there is an 
+    # association calls the this method with both the session and socket.  This is
+    # This would be a time to establish any data structures necessary for a pareticular
+    # subsubcription -- for example one hand in a card game, or a user's pot in a poker
+    # game.
+    # since updates go across sockets, it would make sense to do something with the object_id
+    # of the socket as a reference.
+    #```ruby
+    # property subscribers : [] of HTTP::WebSocket
+    # property player_hands : {} of UInt64 => Array(String)
+    #  
+    # def subscribed (session_id, socket)
+    #   player_hands[socket.object_id] = draw_cards...
+    # end
+    # 
+    # def display_hands
+    #   self.subscribers.each_with_index do |socket, idx|
+    #     hand = player_hands[socket.object_id]
+    #     socket.update({"id"=>"#{dom_id}-mycard-#{idx}", "value"=>hand[idx]})
+    #   end
+    # end
+    #```
+    def subscribed( session_id : String, socket : HTTP::WebSocket)
     end
 
     # delete a subscription for _socket_
@@ -107,13 +146,14 @@ module Lattice::Connected
             {"subscribe":{sessionID: "#{session_id}",
              ids:  [].map.call(document
               .querySelectorAll("[data-version]"),
-                function(el){return el.id})   }}
+                function(el){return el.getAttribute("data-item")})   }}
              ));
         };
 
         connectEvents(#{js_var});
 
       JS
+      #          function(el){return el.id})   }}
     end
 
     def self.subclasses
