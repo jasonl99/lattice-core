@@ -6,39 +6,40 @@ function handleEvent(event_type, el, socket) {
     case "click":
       el.addEventListener("click", function(evt) {
         id = evt.target.getAttribute("data-item")
-        msg = {}
-        msg[id] = {click: "true"}
-        socket.send(JSON.stringify({click: msg}))
+        msg = {mouse: {} }
+        msg.mouse[id] = {action: "click"}
+        socket.send(JSON.stringify(msg))
       })
     case "input":
       el.addEventListener("input", function(evt) {
         id = evt.target.getAttribute("data-item")
-        msg = {}
-        msg[id] = {value: el.value}
-        socket.send(JSON.stringify({input: msg}))
+        msg = {input:{}}
+        msg.input[id] = {action: "input", value: el.value}
+        socket.send(JSON.stringify(msg))
       })
     case "mouseleave":
       el.addEventListener("mouseleave", function(evt) {
         id = evt.target.getAttribute("data-item")
-        msg = {}
-        msg[id] = {mouseleave: true}
-        socket.send(JSON.stringify({mouse: msg}))
+        msg = {mouse: {}}
+        msg.mouse[id] = {action: "mouseleave"}
+        socket.send(JSON.stringify(msg))
       })
     case "mouseenter":
       el.addEventListener("mouseenter", function(evt) {
         id = evt.target.getAttribute("data-item")
-        msg = {}
-        msg[id] =  {mouseenter: true}
-        socket.send(JSON.stringify({mouse: msg}))
+        msg = {mouse:{}}
+        msg.mouse[id] =  {action: "mouseenter"}
+        socket.send(JSON.stringify(msg))
       })
     case "submit":
       el.addEventListener("submit", function(evt) {
         id = evt.target.getAttribute("data-item")
         evt.preventDefault();
         evt.stopPropagation();
-        msg = {}
-        msg[id] = formToJSON(el);
-        socket.send(JSON.stringify({submit: msg}))
+        msg = {submit:{}}
+        msg.submit[id] = formToJSON(el);
+        msg.submit[id]["action"] = "submit"
+        socket.send(JSON.stringify(msg))
         el.reset();  //TODO This is just a quick method of clearing the form for now
       })
       break;
@@ -113,7 +114,6 @@ function handleSocketMessage(message) {
 // modify the dom based on the imformation contained in domData
 function modifyDOM(domData) {
   // if (matches = document.querySelectorAll("#" + domData.id)) {
-  console.log( "Domdata: ",domData)
   if (matches = document.querySelectorAll("[data-item='" + domData.id + "']" )) {
     for (var i=0; i<matches.length; i++) {
       el = matches[i];
@@ -133,6 +133,12 @@ function modifyDOM(domData) {
         case "insert":
           el.insertAdjacentHTML('beforeend',domData.value)
           el.scrollTop = el.scrollHeight;
+          if (maxChildren = el.getAttribute("data-maxChildren")) {
+            children = el.children
+            while (children.length > 0 && children.length > maxChildren) {
+              el.removeChild(children[0])
+            }
+          }
           break;
       }
       el.closest("[data-version]").setAttribute("data-version",domData.version)

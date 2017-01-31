@@ -164,13 +164,12 @@ module Lattice::Connected
       # when "act"
       #   puts "act: #{action_params}"
       #   act(action_params, socket)
-      when "click"
-        puts "act: #{action_params}"
-        act(action_params, socket)
       when "submit"
         puts "Form submission #{action_params}"
+        act(action_params, socket)
       when "mouse"
-        puts "pointer #{action_params}"
+        puts "mouse #{action_params}"
+        act(action_params, socket)
       when "input"
         puts "input change #{action_params}"
       else
