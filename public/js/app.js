@@ -10,22 +10,26 @@ function baseEvent(evt,event_action, action_params = {}) {
 // On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket) {
+  console.log("handle event", event_type)
   switch (event_type) {
     case "click":
       el.addEventListener("click", function(evt) {
         msg = baseEvent(evt,"click")
         socket.send(JSON.stringify(msg))
       })
+      break;
     case "input":
       el.addEventListener("input", function(evt) {
         msg = baseEvent(evt,"input", {value: el.value})
         socket.send(JSON.stringify(msg))
       })
+      break;
     case "mouseleave":
       el.addEventListener("mouseleave", function(evt) {
         msg = baseEvent(evt,"mouseleave")
         socket.send(JSON.stringify(msg))
       })
+      break;
     case "mouseenter":
       el.addEventListener("mouseenter", function(evt) {
         msg = baseEvent(evt,"mouseenter")
