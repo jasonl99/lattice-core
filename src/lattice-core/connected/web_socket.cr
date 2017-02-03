@@ -95,12 +95,10 @@ module Lattice::Connected
     # incoming `click` example is processed into this:
     # ```
     # {
-    #   "dom_item"    =>"cardgame-93893329349200-card-0 ,
-    #    "session_id" => "d1a602d22520ce3308427eee55376461",
-    #        "target" => #<CardGame::CardGame:0x56097059bf00>,
-    #        "params" => {
-    #           "src":"/images/ace_of_clubs.png"
-    #         }
+    #   "dom_item"    => "cardgame-93893329349200-card-0 ,
+    #   "session_id"  => "d1a602d22520ce3308427eee55376461",
+    #   "target"      => #<CardGame::CardGame:0x56097059bf00>,
+    #   "params"      => { "src":"/images/ace_of_clubs.png" }
     # }
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
