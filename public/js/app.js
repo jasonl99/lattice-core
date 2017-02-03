@@ -1,12 +1,30 @@
+function sendEvent(msg,socket) {
+  console.log("ClientServer message", msg)
+  socket.send(JSON.stringify(msg)) 
+}
+
 function baseEvent(evt,event_action, action_params = {}) {
   id = evt.target.getAttribute("data-item")
   msg = {}
-  msg[id] = {action: event_action, params: action_params}
+  send_attribs = evt.target.getAttribute("data-event-attributes")
+  if (!send_attribs) { send_attribs = "" }
+  attribs = getItems(send_attribs)
+  // attribs = send_attribs.split(",")
+  final_params = {}
+  for (var i=0;i<attribs.length;i++) {
+    final_params[attribs[i]] = evt.target.getAttribute(attribs[i])
+  }
+  for (var attrname in action_params) { 
+    // copy the passed params into the event-attributes object that we created
+    // This means that action_params takes precedence of 
+    // param_attribs.  So if we are sending the elements <div class="myclass">
+    final_params[attrname] = action_params[attrname]; 
+  }
+  msg[id] = {action: event_action, params: final_params}
   return msg
 
 }
-// outgoing events look like this:
-// {"some-data-item": {action: "click", params: {x:123, y:232}}}
+// outgoing events look like this:// {"some-data-item": {action: "click", params: {x:123, y:232}}}
 // On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket) {
@@ -15,32 +33,37 @@ function handleEvent(event_type, el, socket) {
     case "click":
       el.addEventListener("click", function(evt) {
         msg = baseEvent(evt,"click")
-        socket.send(JSON.stringify(msg))
+        sendEvent(msg,socket)
+        // socket.send(JSON.stringify(msg))
       })
       break;
     case "input":
       el.addEventListener("input", function(evt) {
         msg = baseEvent(evt,"input", {value: el.value})
-        socket.send(JSON.stringify(msg))
+        sendEvent(msg,socket)
+        // socket.send(JSON.stringify(msg))
       })
       break;
     case "mouseleave":
       el.addEventListener("mouseleave", function(evt) {
         msg = baseEvent(evt,"mouseleave")
-        socket.send(JSON.stringify(msg))
+        sendEvent(msg,socket)
+        // socket.send(JSON.stringify(msg))
       })
       break;
     case "mouseenter":
       el.addEventListener("mouseenter", function(evt) {
         msg = baseEvent(evt,"mouseenter")
-        socket.send(JSON.stringify(msg))
+        sendEvent(msg,socket)
+        // socket.send(JSON.stringify(msg))
       })
     case "submit":
       el.addEventListener("submit", function(evt) {
         evt.preventDefault();
         evt.stopPropagation();
         msg = baseEvent(evt, "submit", formToJSON(el))
-        socket.send(JSON.stringify(msg))
+        sendEvent(msg,socket)
+        // socket.send(JSON.stringify(msg))
         el.reset();  //TODO This is just a quick method of clearing the form for now
       })
       break;
@@ -63,13 +86,13 @@ function getItems(item_list) {
 }
 
 // given an element, set up javascript handlers for
-// each event type found.  data-track is a comma-delimited
+// each event type found.  data-events is a comma-delimited
 // list of events that map loosely to native javascript
 // events recognized by addEventHandler, but we can also 
 // define our own.
-// i.e. <input type="text" data-track="click,keypress">
+// i.e. <input type="text" data-events="click,keypress">
 function handleElementEvents(el,socket) {
-  event_types = getItems(el.getAttribute("data-track"));
+  event_types = getItems(el.getAttribute("data-events"));
   for (var i=0; i<event_types.length;i++) {
     handleEvent(event_types[i],el, socket)
   }
@@ -80,21 +103,21 @@ function handleElementEvents(el,socket) {
 // This finds nodes within the object that send data back to the
 // server (clicks, form submits, etc)
 function connectElement(el, socket) {
-  evented_elements = el.querySelectorAll("[data-track]")
+  evented_elements = el.querySelectorAll("[data-events]")
   for (var i=0; i<evented_elements.length; i++) {
     handleElementEvents(evented_elements[i], socket);
   }
 }
 
 // Wait until the DOM is loaded, then find all objects
-// with a data-version attribute (our current way of
+// with a data-subscribe attribute (our current way of
 // indicating that this object communicates over a websocket).
 // For each such element we find, call connectElement.
 // which establishes _outgoing_ socket communication for events
 // that happen to this element and its child nodes.
 function connectEvents(socket) {
   document.addEventListener("DOMContentLoaded", function(evt) {
-    connected = document.querySelectorAll("[data-version]")
+    connected = document.querySelectorAll("[data-subscribe]")
     for (var i=0; i<connected.length; i++) {
       connectElement(connected[i], socket);
     }
@@ -105,6 +128,7 @@ function connectEvents(socket) {
 // handle an incoming message over the socket
 function handleSocketMessage(message) {
   payload = JSON.parse(message);
+  console.log("ServerClient Message: ", payload)
   if ("dom" in payload) {
     modifyDOM(payload.dom);
   }
@@ -125,9 +149,6 @@ function modifyDOM(domData) {
         case "update_attribute":
           el.setAttribute(domData.attribute, domData.value)
           break;
-        // case "attribute":
-        //   el.innerHTML = domData.value
-        //   break;
         case "delete":
           el.parentNode.removeChild(el)
           break;
@@ -142,7 +163,7 @@ function modifyDOM(domData) {
           }
           break;
       }
-      el.closest("[data-version]").setAttribute("data-version",domData.version)
+      // el.closest("[data-version]").setAttribute("data-version",domData.version)
     }
   } else {
       console.log("cound not locate element " + domData.id)

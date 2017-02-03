@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta id="repository-name" content="github.com/jasonl99/lattice-core">
+  <link href="../../css/style.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript" src="../../js/doc.js"></script>
+  <title>Lattice::Connected::WebSocket - github.com/jasonl99/lattice-core</title>
+</head>
+<body>
+
+<div id="types-list">
+  <div id="search-box">
+    <input type="search" id="search-input" placeholder="Search...">
+  </div>
+
+  <ul>
+    <li><a href="../../index.html">README</a></li>
+  </ul>
+
+  <ul>
+  
+  <li class="parent open current" data-id="github.com/jasonl99/lattice-core/Lattice" data-name="lattice">
+      <a href="../../Lattice.html">Lattice</a>
+      
+        <ul>
+  
+  <li class="parent open current" data-id="github.com/jasonl99/lattice-core/Lattice/Connected" data-name="lattice::connected">
+      <a href="../../Lattice/Connected.html">Connected</a>
+      
+        <ul>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebObject" data-name="lattice::connected::webobject">
+      <a href="../../Lattice/Connected/WebObject.html">WebObject</a>
+      
+    </li>
+  
+  <li class=" current" data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebSocket" data-name="lattice::connected::websocket">
+      <a href="../../Lattice/Connected/WebSocket.html">WebSocket</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+  <li class="parent " data-id="github.com/jasonl99/lattice-core/Lattice/Core" data-name="lattice::core">
+      <a href="../../Lattice/Core.html">Core</a>
+      
+        <ul>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/Application" data-name="lattice::core::application">
+      <a href="../../Lattice/Core/Application.html">Application</a>
+      
+    </li>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/PublicStorage" data-name="lattice::core::publicstorage">
+      <a href="../../Lattice/Core/PublicStorage.html">PublicStorage</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+</div>
+
+<div id="main-content">
+<h1 class="type-name">
+
+  <span class="kind">abstract class</span> Lattice::Connected::WebSocket
+
+</h1>
+
+
+  <ul class="superclass-hierarchy"><li class="superclass"><a href="../../Lattice/Connected/WebSocket.html">Lattice::Connected::WebSocket</a></li><li class="superclass">Reference</li><li class="superclass">Object</li></ul>
+
+
+
+
+  <h2>Overview</h2>
+
+  <p>WebSocket is not instantiated, but acts as a conduit for connecting individual HTTP::WebSockets
+to instantiated WebObjects.</p>
+
+<p>REGISTERED_SESSIONS contains all known active sockets along with their associated
+session_id in a Hash(UInt64=>String), where socket's object_id is the key, and the
+session_id string is the value.  Ultimately, we have to be able to associated 
+sessions with sockets, and this is the most direct means and the logical place,</p>
+
+<p>Our ClientServer API's entry point is on_message, which is called whenever a new
+data comes in across the socket.  This data is, by definition, an aribrary string,
+but since the endpoint is known and only promises to handle this API, we shouldn't
+expect anything other then incoming ClientServer API messages.  </p>
+
+<p>The incoming messages are validated and packaged by validate_payload, which does all
+the "heavy lifting" - it identifies the instantiated object and creates a reference to it,
+finds the associated session (if one exists) and supplies the session_id string, 
+and pacakges those items in an object that also contains the params of the incoming messages.</p>
+
+<p>The incoming messages, which is the ClientServer API, is a very specifically-formatted
+object with a single key and a value object that has action and param keys.  The example
+below shows clicking on a card in a card_game:</p>
+
+<pre><code>incoming messsage <span class="o">=</span> {
+<span class="s">&quot;cardgame-93893329349200-card-0&quot;</span>: {
+  <span class="s">&quot;action&quot;</span><span class="n">:click</span>,
+  <span class="s">&quot;params&quot;</span>: {
+    <span class="s">&quot;src&quot;</span><span class="n">:&quot;/images/ace_of_clubs.png&quot;</span> }
+}</code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2>Defined in:</h2>
+  
+    
+      <a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L56" target="_blank">lattice-core/connected/web_socket.cr</a>
+    
+    <br/>
+  
+
+
+
+  
+    <h2>Constant Summary</h2>
+  
+  <dl>
+    
+      <dt class="entry-const" id="REGISTERED_SESSIONS">
+        <strong>REGISTERED_SESSIONS</strong> = <code>{} <span class="k">of</span> <span class="t">UInt64</span> => <span class="t">String</span></code>
+      </dt>
+      
+      <dd class="entry-const-doc">
+        <p>VALID_ACTIONS = %w(subscribe click input mouse submit)</p>
+      </dd>
+      
+    
+  </dl>
+
+
+
+  <h2>Class Method Summary</h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#extract_id%3F%28from%3AString%29-class-method" class="signature"><strong>.extract_id?</strong>(from : String)</a>
+        
+          <div class="summary"><p><span class="flag green">OPTIMIZE</span>  this should also be used by extract_ids</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#extract_ids%28source%3AArray%28JSON%3A%3AType%29%3F%29%3AArray%28UInt64%29-class-method" class="signature"><strong>.extract_ids</strong>(source : Array(JSON::Type)?) : Array(UInt64)</a>
+        
+          <div class="summary"><p>Extracts UIn64s that are object_ids of instantiated WebObjects from <em>Array(JSON::Type)</em> e.g., [11234, 1235, 1236] as JSON::Any becomes [1235] as Array(UInt64) but ids may come like ["city-3", "cardgame-198272-3player"] so we strip non-digits and end up with an array like this ["3","198272"], where the largest numeric id is  used and the others disccard (we ignore 3player, but use city-3 since it's the only  one).</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#memory_used-class-method" class="signature"><strong>.memory_used</strong></a>
+        
+          <div class="summary"><p>a debugging aid to show how much data we have laying around</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#on_close%28socket%29-class-method" class="signature"><strong>.on_close</strong>(socket)</a>
+        
+          <div class="summary"><p>when a socket is closed we have to remove it from all of the subscriptions it took  part in as well as from registered sessions.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#on_message%28message%2Csocket%29-class-method" class="signature"><strong>.on_message</strong>(message, socket)</a>
+        
+          <div class="summary"><p>Handle an incoming socket message</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#register_session%28session%2Csocket%29-class-method" class="signature"><strong>.register_session</strong>(session, socket)</a>
+        
+          <div class="summary"><p>Sockets and Sessions are tied together by the associative hash REGISTERED_SESSIONS.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribe%28subscribe_data%3AHash%28String%2CJSON%3A%3AType%29%3F%2Csocket%3AHTTP%3A%3AWebSocket%29-class-method" class="signature"><strong>.subscribe</strong>(subscribe_data : Hash(String, JSON::Type)?, socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>A socket is created at the page-level; there may be dozens of DOM objects that  are subscribed to.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribed_to%28socket%3AHTTP%3A%3AWebSocket%29-class-method" class="signature"><strong>.subscribed_to</strong>(socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>given a socket, return an array of all instantiated WebObjects to which the socket is subscribed.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#validate_payload%28message%3AString%2Csocket%3AHTTP%3A%3AWebSocket%29-class-method" class="signature"><strong>.validate_payload</strong>(message : String, socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>validate_payload takes incoming message, parses it as JSON, and processes it according to the ClientServer API.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#verify_session%28session_check%3AString%3F%29-class-method" class="signature"><strong>.verify_session</strong>(session_check : String?)</a>
+        
+          <div class="summary"><p>Given a session_id, return true if the Session instance is valid</p></div>
+        
+      </li>
+    
+  </ul>
+
+
+
+
+
+
+
+<div class="methods-inherited">
+  
+    
+
+
+    
+
+
+  
+    
+
+
+    
+
+
+  
+</div>
+
+
+  <h2>Class Method Detail</h2>
+  
+    <div class="entry-detail" id="extract_id?&#40;from:String&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>extract_id?</strong>(from : String)
+
+        <a class="method-permalink" href="#extract_id%3F%28from%3AString%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p><span class="flag green">OPTIMIZE</span>  this should also be used by extract_ids</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L198" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="extract_ids&#40;source:Array&#40;JSON::Type&#41;?&#41;:Array&#40;UInt64&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>extract_ids</strong>(source : Array(JSON::Type)?) : Array(UInt64)
+
+        <a class="method-permalink" href="#extract_ids%28source%3AArray%28JSON%3A%3AType%29%3F%29%3AArray%28UInt64%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Extracts UIn64s that are object_ids of instantiated WebObjects from <em>Array(JSON::Type)</em>
+e.g., [11234, 1235, 1236] as JSON::Any becomes [1235] as Array(UInt64)
+but ids may come like ["city-3", "cardgame-198272-3player"] so we strip non-digits
+and end up with an array like this ["3","198272"], where the largest numeric id is 
+used and the others disccard (we ignore 3player, but use city-3 since it's the only 
+one).  This array is turned into Unit64s with only instantiated objects being returned</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L138" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="memory_used-class-method">
+      <div class="signature">
+        
+        def self.<strong>memory_used</strong>
+
+        <a class="method-permalink" href="#memory_used-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>a debugging aid to show how much data we have laying around</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L186" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="on_close&#40;socket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>on_close</strong>(socket)
+
+        <a class="method-permalink" href="#on_close%28socket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>when a socket is closed we have to remove it from all of the subscriptions it took 
+part in as well as from registered sessions.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L254" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="on_message&#40;message,socket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>on_message</strong>(message, socket)
+
+        <a class="method-permalink" href="#on_message%28message%2Csocket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Handle an incoming socket message</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L228" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="register_session&#40;session,socket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>register_session</strong>(session, socket)
+
+        <a class="method-permalink" href="#register_session%28session%2Csocket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Sockets and Sessions are tied together by the associative hash REGISTERED_SESSIONS.
+each socket's object_id is used as they key, and the session's id as the value.  This
+makes it trivial to find a session by a socket.
+in this case we simply set the value, overwriting any that may be present</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L162" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribe&#40;subscribe_data:Hash&#40;String,JSON::Type&#41;?,socket:HTTP::WebSocket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>subscribe</strong>(subscribe_data : Hash(String, JSON::Type)?, socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscribe%28subscribe_data%3AHash%28String%2CJSON%3A%3AType%29%3F%2Csocket%3AHTTP%3A%3AWebSocket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>A socket is created at the page-level; there may be dozens of DOM objects that 
+are subscribed to.   The socket, at its convenience, sends a <em>subscribe</em> action
+to the server, which contains a session_id and the dom ids for which it would like
+to subscribe.  After the session has been verified and registered, we extract the ids
+from subscribed_data and send the <code><a href="../../Lattice/Connected/WebSocket.html#subscribe%28subscribe_data%3AHash%28String%2CJSON%3A%3AType%29%3F%2Csocket%3AHTTP%3A%3AWebSocket%29-class-method">.subscribe</a></code> message with out socket to each 
+object.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L173" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribed_to&#40;socket:HTTP::WebSocket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>subscribed_to</strong>(socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscribed_to%28socket%3AHTTP%3A%3AWebSocket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>given a socket, return an array of all instantiated WebObjects to which
+the socket is subscribed.  For example, if a person is watching scores for 10 games
+on a page, it would return the the ten NFLGame instances.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L154" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="validate_payload&#40;message:String,socket:HTTP::WebSocket&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>validate_payload</strong>(message : String, socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#validate_payload%28message%3AString%2Csocket%3AHTTP%3A%3AWebSocket%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>validate_payload takes incoming message, parses it as JSON,
+and processes it according to the ClientServer API.  The key
+of the message is the data-item dom element that is the subject
+of the message, and the value is an object with an action and parameters.
+the action key of params is a string, generally maps to the javascript
+equivalen event when possible (those used by javascripts' addEventHandler).
+Currently, click, mouseenter, mouseleave, submit and input events are defined.
+incoming params are not checked for validity, and their values are entirely dependent
+on the javascript on the client (as defined in app.js).
+Two example incoming messages are below:</p>
+
+<pre><code><span class="c"># example subscribe message</span>
+{
+  <span class="s">&quot;cardgame-93972704197200&quot;</span>: {
+    <span class="s">&quot;action&quot;</span><span class="n">:subscribe</span>,
+    <span class="s">&quot;params&quot;</span>: {
+      <span class="s">&quot;session_id&quot;</span><span class="n">:d1a602d22520ce3308427eee55376461</span>
+    }
+  }
+}
+
+<span class="c"># example clicking a card in card_game</span>
+{
+  <span class="s">&quot;cardgame-93893329349200-card-0&quot;</span>: {
+    <span class="s">&quot;action&quot;</span><span class="n">:click</span>,
+    <span class="s">&quot;params&quot;</span>: {
+      <span class="s">&quot;src&quot;</span><span class="n">:&quot;/images/ace_of_clubs.png&quot;</span> 
+     }
+}</code></pre>
+
+<p>Once parsed, the the key is used to identify and instantiate a WebObject,
+If a session has previously been registered with a socket, the session_id
+is identified.
+These results are packaged into an object; for example, the previous
+incoming <code>click</code> example is processed into this:</p>
+
+<pre><code>{
+  <span class="s">&quot;dom_item&quot;</span>    =><span class="s">&quot;cardgame-93893329349200-card-0 ,
+   &quot;</span>session_id<span class="s">&quot; &#61;&gt; &quot;</span>d1a602d22520ce3308427eee55376461<span class="s">&quot;,
+       &quot;</span>target<span class="s">&quot; &#61;&gt; #&lt;CardGame::CardGame:0x56097059bf00&gt;,
+       &quot;</span>params<span class="s">&quot; &#61;&gt; &#123;
+          &quot;</span>src<span class="s">&quot;:&quot;</span><span class="s">/images/</span>ace_of_clubs.png<span class="s">&quot;
+        &#125;
+&#125;</code></pre></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L105" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="verify_session&#40;session_check:String?&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>verify_session</strong>(session_check : String?)
+
+        <a class="method-permalink" href="#verify_session%28session_check%3AString%3F%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Given a session_id, return true if the Session instance is valid</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_socket.cr#L128" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+
+
+
+
+
+
+</div>
+
+</body>
+</html>

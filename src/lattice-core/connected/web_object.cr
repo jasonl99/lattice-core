@@ -1,6 +1,7 @@
 module Lattice::Connected
 
   class WebObject
+    # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
     INSTANCES = Hash(UInt64, self).new      # all instances of any WebObject, across all subclasses
     @@instances = Hash(String, UInt64).new  # individual instances of this class (CardGame, City, etc)
     property version = 0
@@ -58,8 +59,7 @@ module Lattice::Connected
     end
 
     # A subscriber, with the _session_id_ given, has oassed in an action
-    def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?)
-    #def subscriber_action(data, session_id)
+    def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
       if session_id
         puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
       else
@@ -84,7 +84,6 @@ module Lattice::Connected
     # end
     def subscribe( socket : HTTP::WebSocket , session_id : String?)
       unless subscribers.includes? socket
-        puts "#{self.name} subscribed by #{session_id}".colorize(:green)
         subscribers << socket
         subscribed session_id, socket if session_id
       else
@@ -127,6 +126,11 @@ module Lattice::Connected
       subscribers.delete(socket)
     end
 
+    def unsubscribed( socket : HTTP::WebSocket)
+      subscribers.delete(socket)
+      unsubscribed socket
+    end
+
     # Called during page rendering prep as a spinup for an object.  Instantiate a new 
     # object (if requested), return the javascript and object for rendering.
     def self.preload(name : String, session_id : String, create = true)
@@ -165,11 +169,11 @@ module Lattice::Connected
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
-            subs = document.querySelectorAll("[data-version]")
+            subs = document.querySelectorAll("[data-subscribe]")
             for (var i=0;i<subs.length;i++){
               msg = {}
+              // OPTIMIZE - would it be better to get the id from data-subscribe rather than data-item?
               msg[ subs[i].getAttribute("data-item") ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
-              // console.log(msg
               evt.target.send(JSON.stringify(msg))
             }
 

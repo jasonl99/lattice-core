@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta id="repository-name" content="github.com/jasonl99/lattice-core">
+  <link href="../../css/style.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript" src="../../js/doc.js"></script>
+  <title>Lattice::Connected::WebObject - github.com/jasonl99/lattice-core</title>
+</head>
+<body>
+
+<div id="types-list">
+  <div id="search-box">
+    <input type="search" id="search-input" placeholder="Search...">
+  </div>
+
+  <ul>
+    <li><a href="../../index.html">README</a></li>
+  </ul>
+
+  <ul>
+  
+  <li class="parent open current" data-id="github.com/jasonl99/lattice-core/Lattice" data-name="lattice">
+      <a href="../../Lattice.html">Lattice</a>
+      
+        <ul>
+  
+  <li class="parent open current" data-id="github.com/jasonl99/lattice-core/Lattice/Connected" data-name="lattice::connected">
+      <a href="../../Lattice/Connected.html">Connected</a>
+      
+        <ul>
+  
+  <li class=" current" data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebObject" data-name="lattice::connected::webobject">
+      <a href="../../Lattice/Connected/WebObject.html">WebObject</a>
+      
+    </li>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebSocket" data-name="lattice::connected::websocket">
+      <a href="../../Lattice/Connected/WebSocket.html">WebSocket</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+  <li class="parent " data-id="github.com/jasonl99/lattice-core/Lattice/Core" data-name="lattice::core">
+      <a href="../../Lattice/Core.html">Core</a>
+      
+        <ul>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/Application" data-name="lattice::core::application">
+      <a href="../../Lattice/Core/Application.html">Application</a>
+      
+    </li>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/PublicStorage" data-name="lattice::core::publicstorage">
+      <a href="../../Lattice/Core/PublicStorage.html">PublicStorage</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+</div>
+
+<div id="main-content">
+<h1 class="type-name">
+
+  <span class="kind">class</span> Lattice::Connected::WebObject
+
+</h1>
+
+
+  <ul class="superclass-hierarchy"><li class="superclass"><a href="../../Lattice/Connected/WebObject.html">Lattice::Connected::WebObject</a></li><li class="superclass">Reference</li><li class="superclass">Object</li></ul>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  <h2>Defined in:</h2>
+  
+    
+      <a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L3" target="_blank">lattice-core/connected/web_object.cr</a>
+    
+    <br/>
+  
+
+
+
+  
+    <h2>Constant Summary</h2>
+  
+  <dl>
+    
+      <dt class="entry-const" id="INSTANCES">
+        <strong>INSTANCES</strong> = <code><span class="t">Hash</span>(<span class="t">UInt64</span>, <span class="k">self</span>).<span class="k">new</span></code>
+      </dt>
+      
+      <dd class="entry-const-doc">
+        <p><span class="flag green">OPTIMIZE</span>  it would be better to have a #self.all_instances that goes through @@instances of subclasses</p>
+      </dd>
+      
+    
+  </dl>
+
+
+
+  <h2>Class Method Summary</h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#display_all-class-method" class="signature"><strong>.display_all</strong></a>
+        
+          <div class="summary"><p>simple debugging catch early on if we are forgetting to clean up after ourselves.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#instances-class-method" class="signature"><strong>.instances</strong></a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#instances%3D%28instances%29-class-method" class="signature"><strong>.instances=</strong>(instances)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#javascript%28session_id%3AString%2Ctarget%3A_%29-class-method" class="signature"><strong>.javascript</strong>(session_id : String, target : _)</a>
+        
+          <div class="summary"><p>this creates a connection back to the serverm immediately calls back with a session_id and the element ids to which to subscribe.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#js_var-class-method" class="signature"><strong>.js_var</strong></a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#new%28name%3AString%29-class-method" class="signature"><strong>.new</strong>(name : String)</a>
+        
+          <div class="summary"><p>a new thing must have a name, and that name must be unique so we can find them across instances.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#preload%28name%3AString%2Csession_id%3AString%2Ccreate%3Dtrue%29-class-method" class="signature"><strong>.preload</strong>(name : String, session_id : String, create = <span class="n">true</span>)</a>
+        
+          <div class="summary"><p>Called during page rendering prep as a spinup for an object.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subclasses-class-method" class="signature"><strong>.subclasses</strong></a>
+        
+      </li>
+    
+  </ul>
+
+
+
+  <h2>Instance Method Summary</h2>
+  <ul class="list-summary">
+    
+      <li class="entry-summary">
+        <a href="#content-instance-method" class="signature"><strong>#content</strong></a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#dom_id-instance-method" class="signature"><strong>#dom_id</strong></a>
+        
+          <div class="summary"><p>The dom id .i.e &lt;div id="abc"> for this object.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#index_from%28source%3AString%2Cmax%3D100%29-instance-method" class="signature"><strong>#index_from</strong>(source : String, max = <span class="n">100</span>)</a>
+        
+          <div class="summary"><p>Converts a dom-style id and extracts that last number from it for example, "card-3" returns 3.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#insert%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method" class="signature"><strong>#insert</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#name%3AString-instance-method" class="signature"><strong>#name</strong> : String</a>
+        
+          <div class="summary"><p>Each instance has its own subcribers.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#name%3D%28name%3AString%29-instance-method" class="signature"><strong>#name=</strong>(name : String)</a>
+        
+          <div class="summary"><p>Each instance has its own subcribers.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#session_string%28session_id%3AString%2Cvalue_of%3AString%29-instance-method" class="signature"><strong>#session_string</strong>(session_id : String, value_of : String)</a>
+        
+          <div class="summary"><p>either the session & the value exist or its nil</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribe%28socket%3AHTTP%3A%3AWebSocket%2Csession_id%3AString%3F%29-instance-method" class="signature"><strong>#subscribe</strong>(socket : HTTP::WebSocket, session_id : String?)</a>
+        
+          <div class="summary"><p>a socket has requested a subscription to this object.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribed%28session_id%3AString%2Csocket%3AHTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#subscribed</strong>(session_id : String, socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>This is a key piece for handling idividualization of a connected object.</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribed%3F%28socket%3AHTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#subscribed?</strong>(socket : HTTP::WebSocket)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscriber_action%28dom_item%3AString%2Caction%3AHash%28String%2CJSON%3A%3AType%29%2Csession_id%3AString%3F%2Csocket%3AHTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#subscriber_action</strong>(dom_item : String, action : Hash(String, JSON::Type), session_id : String?, socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>A subscriber, with the <em>session</em>id_ given, has oassed in an action</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribers%3AArray%28HTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#subscribers</strong> : Array(HTTP::WebSocket)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#subscribers%3D%28subscribers%29-instance-method" class="signature"><strong>#subscribers=</strong>(subscribers)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#unsubscribe%28socket%3AHTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#unsubscribe</strong>(socket : HTTP::WebSocket)</a>
+        
+          <div class="summary"><p>delete a subscription for <em>socket</em></p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#unsubscribed%28socket%3AHTTP%3A%3AWebSocket%29-instance-method" class="signature"><strong>#unsubscribed</strong>(socket : HTTP::WebSocket)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#update%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method" class="signature"><strong>#update</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#update_attribute%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method" class="signature"><strong>#update_attribute</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)</a>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#version%3AInt32-instance-method" class="signature"><strong>#version</strong> : Int32</a>
+        
+          <div class="summary"><p>individual instances of this class (CardGame, City, etc)</p></div>
+        
+      </li>
+    
+      <li class="entry-summary">
+        <a href="#version%3D%28version%29-instance-method" class="signature"><strong>#version=</strong>(version)</a>
+        
+          <div class="summary"><p>individual instances of this class (CardGame, City, etc)</p></div>
+        
+      </li>
+    
+  </ul>
+
+
+
+
+
+<div class="methods-inherited">
+  
+    
+
+
+    
+
+
+  
+    
+
+
+    
+
+
+  
+</div>
+
+
+  <h2>Class Method Detail</h2>
+  
+    <div class="entry-detail" id="display_all-class-method">
+      <div class="signature">
+        
+        def self.<strong>display_all</strong>
+
+        <a class="method-permalink" href="#display_all-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>simple debugging catch early on if we are forgetting to clean up after ourselves.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L14" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="instances-class-method">
+      <div class="signature">
+        
+        def self.<strong>instances</strong>
+
+        <a class="method-permalink" href="#instances-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L8" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="instances&#61;&#40;instances&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>instances=</strong>(instances)
+
+        <a class="method-permalink" href="#instances%3D%28instances%29-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L8" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="javascript&#40;session_id:String,target:_&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>javascript</strong>(session_id : String, target : _)
+
+        <a class="method-permalink" href="#javascript%28session_id%3AString%2Ctarget%3A_%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>this creates a connection back to the serverm immediately calls back with a session_id
+and the element ids to which to subscribe.
+It then creates event listeners for actions on subscribed objects, currently
+just click events (more will come)</p>
+
+<p><span class="flag yellow">FIXME</span>  we have a problem right now when the same object is on the page twice: it only
+updates one of them since document.getElementById only returns the first match.
+this can be solved by using a class instead of an id (so cardgame-12312-card-2 is the
+class, not the id.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L166" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="js_var-class-method">
+      <div class="signature">
+        
+        def self.<strong>js_var</strong>
+
+        <a class="method-permalink" href="#js_var-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L146" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="new&#40;name:String&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>new</strong>(name : String)
+
+        <a class="method-permalink" href="#new%28name%3AString%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>a new thing must have a name, and that name must be unique so we can
+find them across instances.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L56" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="preload&#40;name:String,session_id:String,create&#61;true&#41;-class-method">
+      <div class="signature">
+        
+        def self.<strong>preload</strong>(name : String, session_id : String, create = <span class="n">true</span>)
+
+        <a class="method-permalink" href="#preload%28name%3AString%2Csession_id%3AString%2Ccreate%3Dtrue%29-class-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Called during page rendering prep as a spinup for an object.  Instantiate a new 
+object (if requested), return the javascript and object for rendering.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L136" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subclasses-class-method">
+      <div class="signature">
+        
+        def self.<strong>subclasses</strong>
+
+        <a class="method-permalink" href="#subclasses-class-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L196" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+
+
+
+  <h2>Instance Method Detail</h2>
+  
+    <div class="entry-detail" id="content-instance-method">
+      <div class="signature">
+        
+        def <strong>content</strong>
+
+        <a class="method-permalink" href="#content-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L18" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="dom_id-instance-method">
+      <div class="signature">
+        
+        def <strong>dom_id</strong>
+
+        <a class="method-permalink" href="#dom_id-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>The dom id .i.e &lt;div id="abc"> for this object.  When later parsing this value
+the system will look for the largest valued number in the dom_id, so it is ok
+to use values like "clock24-11929238" which would return 11929238.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L154" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="index_from&#40;source:String,max&#61;100&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>index_from</strong>(source : String, max = <span class="n">100</span>)
+
+        <a class="method-permalink" href="#index_from%28source%3AString%2Cmax%3D100%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Converts a dom-style id and extracts that last number from it
+for example, "card-3" returns 3.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L49" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="insert&#40;change:Hash&#40;String,String|Int32&#41;,subscribers:Array&#40;HTTP::WebSocket&#41;&#61;self.subscribers&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>insert</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)
+
+        <a class="method-permalink" href="#insert%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L41" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="name:String-instance-method">
+      <div class="signature">
+        
+        def <strong>name</strong> : String
+
+        <a class="method-permalink" href="#name%3AString-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Each instance has its own subcribers.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L11" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="name&#61;&#40;name:String&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>name=</strong>(name : String)
+
+        <a class="method-permalink" href="#name%3D%28name%3AString%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>Each instance has its own subcribers.</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L11" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="session_string&#40;session_id:String,value_of:String&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>session_string</strong>(session_id : String, value_of : String)
+
+        <a class="method-permalink" href="#session_string%28session_id%3AString%2Cvalue_of%3AString%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>either the session & the value exist or its nil</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L23" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribe&#40;socket:HTTP::WebSocket,session_id:String?&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscribe</strong>(socket : HTTP::WebSocket, session_id : String?)
+
+        <a class="method-permalink" href="#subscribe%28socket%3AHTTP%3A%3AWebSocket%2Csession_id%3AString%3F%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>a socket has requested a subscription to this object.  This means it will send & receive
+messages across the <em>socket</em> passed.  It is the initial handshake to a user  
+It is the initial handshake between client and server.
+def subscribe( socket : HTTP::WebSocket )
+  unless subscribers.includes? socket</p>
+
+<pre><code>subscribers <span class="o"><<</span> socket
+session_id <span class="o">=</span> <span class="t">Lattice</span><span class="t">::</span><span class="t">Connected</span><span class="t">::</span><span class="t">WebSocket</span><span class="t">::</span><span class="t">REGISTERED_SESSIONS</span>[socket.object_id]?  
+subscribed session_id, socket <span class="k">if</span> session_id</code></pre>
+
+<p>end
+end</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L85" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribed&#40;session_id:String,socket:HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscribed</strong>(session_id : String, socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscribed%28session_id%3AString%2Csocket%3AHTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>This is a key piece for handling idividualization of a connected object.
+A socket must subscribe to connected object, and #subscribe
+automatically looks up the session_id for the socket, and if there is an 
+association calls the this method with both the session and socket.  This is
+This would be a time to establish any data structures necessary for a pareticular
+subsubcription -- for example one hand in a card game, or a user's pot in a poker
+game.
+since updates go across sockets, it would make sense to do something with the object_id
+of the socket as a reference.</p>
+
+<pre><code class='language-ruby'>property subscribers : [] of HTTP::WebSocket
+property player_hands : {} of UInt64 => Array(String)
+ 
+def subscribed (session_id, socket)
+  player_hands[socket.object_id] = draw_cards...
+end
+
+def display_hands
+  self.subscribers.each_with_index do |socket, idx|
+    hand = player_hands[socket.object_id]
+    socket.update({"id"=>"#{dom_id}-mycard-#{idx}", "value"=>hand[idx]})
+  end
+end</code></pre></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L118" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribed?&#40;socket:HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscribed?</strong>(socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscribed%3F%28socket%3AHTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L121" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscriber_action&#40;dom_item:String,action:Hash&#40;String,JSON::Type&#41;,session_id:String?,socket:HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscriber_action</strong>(dom_item : String, action : Hash(String, JSON::Type), session_id : String?, socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscriber_action%28dom_item%3AString%2Caction%3AHash%28String%2CJSON%3A%3AType%29%2Csession_id%3AString%3F%2Csocket%3AHTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>A subscriber, with the <em>session</em>id_ given, has oassed in an action</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L62" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribers:Array&#40;HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscribers</strong> : Array(HTTP::WebSocket)
+
+        <a class="method-permalink" href="#subscribers%3AArray%28HTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L10" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="subscribers&#61;&#40;subscribers&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>subscribers=</strong>(subscribers)
+
+        <a class="method-permalink" href="#subscribers%3D%28subscribers%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L10" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="unsubscribe&#40;socket:HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>unsubscribe</strong>(socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#unsubscribe%28socket%3AHTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>delete a subscription for <em>socket</em></p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L125" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="unsubscribed&#40;socket:HTTP::WebSocket&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>unsubscribed</strong>(socket : HTTP::WebSocket)
+
+        <a class="method-permalink" href="#unsubscribed%28socket%3AHTTP%3A%3AWebSocket%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L129" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="update&#40;change:Hash&#40;String,String|Int32&#41;,subscribers:Array&#40;HTTP::WebSocket&#41;&#61;self.subscribers&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>update</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)
+
+        <a class="method-permalink" href="#update%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L35" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="update_attribute&#40;change:Hash&#40;String,String|Int32&#41;,subscribers:Array&#40;HTTP::WebSocket&#41;&#61;self.subscribers&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>update_attribute</strong>(change : Hash(String, String | Int32), subscribers : Array(HTTP::WebSocket) = <span class="k">self</span>.subscribers)
+
+        <a class="method-permalink" href="#update_attribute%28change%3AHash%28String%2CString%7CInt32%29%2Csubscribers%3AArray%28HTTP%3A%3AWebSocket%29%3Dself.subscribers%29-instance-method">#</a>
+      </div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L29" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="version:Int32-instance-method">
+      <div class="signature">
+        
+        def <strong>version</strong> : Int32
+
+        <a class="method-permalink" href="#version%3AInt32-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>individual instances of this class (CardGame, City, etc)</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L7" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+    <div class="entry-detail" id="version&#61;&#40;version&#41;-instance-method">
+      <div class="signature">
+        
+        def <strong>version=</strong>(version)
+
+        <a class="method-permalink" href="#version%3D%28version%29-instance-method">#</a>
+      </div>
+      
+        <div class="doc"><p>individual instances of this class (CardGame, City, etc)</p></div>
+      
+      <br/>
+      <div>
+        
+          [<a href="https://github.com/jasonl99/lattice-core/blob/1be9d325badaad16d825cad30a9f9c172833be94/src/lattice-core/connected/web_object.cr#L7" target="_blank">View source</a>]
+        
+      </div>
+    </div>
+  
+
+
+
+
+</div>
+
+</body>
+</html>

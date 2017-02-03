@@ -9,47 +9,59 @@ as the occur on the server -- has always a challenging task:  you are creating e
 two objects:  one on the server (an object), and in the browser (a DOM node), and trying to 
 maintain state between them.
 
-That's challenging enough on its own.  Adding to the complexity is the fact that the http is
+That's challenging enough on its own.  Adding to the complexity is the fact that http is
 inherently stateless, and now every update needs a whole setup and teardown process as
-the browser sets up a new request, the server sets up a new response with authentication happening
-along the way, and the subsequent teardown, and you're looking at a _ton_ of work to update an 
-element on the page.
+the browser creates a new request, the server creates up a new response 
+with authentication happening along the way. Add the subsequent teardown, and you're looking 
+at a _ton_ of work to update an element on a page.
 
 The axiomatic way to do this has been use some javascript libarary that ulimately performs these
-updates over AJAX.  The update still happen in a stateless manner -- it's just that a lot of the 
+updates over AJAX.  The updates still happen in a stateless manner -- it's just that a lot of the 
 complexity and overhead is invisibly buried and discarded by the javascript that performs the ajax.
-The server still has an increased workload as it is polled regularly.
+But make no mistake browser and the server still work _a lot_ to update a little element on your
+page.
 
-Enter WebSockets.  They are new, part of the HTML5 spec.  They will only work on modern browsers,
-there is no intention of making this framework work without them.  Think of it as a
-platform-specific framework:  Instead of Mac, Windows, or Linux, it's the "socket-ready browser"
-platform.
+Enter [WebSockets](https://www.websocket.org/quantum.html).  They are new, part of the HTML5 
+spec.  They will only work on modern browsers.  And to be clear, there is no intention of 
+making this framework work without them.  Think of it as a platform-specific framework:  
+Instead of Android or iOS,  it's the "socket-ready browser" platform.  And it just so happens
+that most Android and iOS browsers, as well as Chrome and FireFox on Windows, Mac, and Linux,
+all support WebSockets.
 
-## Why So Unforgiving?
+## _Require_ websockets?  Why be so limiting?
 
 I've been programming for a long time.  I've tried to learn different frameworks, and I've
 played around many times with the "new language of the month."  It's incredibly overwhelming
 to be faced with a new language that can do something a litle better, or that promises some
-big advantage of last month's language darling.
+big advantage of last month's language darling.  The bottom line is there are a ton of 
+frameworks out there already that do far more than I could ever hope to accomplish.
 
-But something happened for me with Cyrstal.  I can't (and won't) make any promises that you'll
-feel the same way.  Crystal's standard http library includes a nice implementation of WebSockets
-that's augmented by kemalcr.  Up until a few months ago, I thought WebSockets was something
-you used if you wanted to include video chats on your web page.  But kemal shows a quick and
-dirty chat app that intrigued me.  So I dug.  I'll freely admit I become a little obsessed.
+But something happened for me as I started experimenting with Crystal.  I can't (and won't) 
+make any promises that you'll feel the same way.  Crystal's standard http library includes a 
+nice implementation of WebSockets that's augmented by kemalcr.  Up until a few months ago, 
+I thought WebSockets was something you used if you wanted to include video chats on your 
+web page.  Never once had I written javascript to open a websocket.  But kemal has a quick 
+and dirty chat app that intrigued me with its simplicity.  So I dug.  I'll freely admit 
+I became a little obsessed.
 
 As I dug deeper, I found WebSockets to be incredibly powerful for developing web apps that have
-the potential to eliminate nearly all of the overhead and complexity that comes with ajax-first
-development.
+eliminate nearly all of the overhead and complexity that comes with ajax-first development.  It
+has an awe-inspiring "the world is my oyster" power that I've experienced only a few times as a 
+programmer (off the top of my head: Visual FoxPro for Windows, and Ruby come to mind).
 
-In fact, the process becomes something different - you stop thinking in terms of routing to 
+In fact, your entire mindset changes - you stop thinking in terms of routing to 
 pages that render a view, and start thinking in terms of events.  Elements on your page
-are connected directly to the object on the server.
+are wired directly to the object on the server and vice-versa.  A button click instantly 
+changes server state, and those changes instantly go to everyone looking at that object.
 
 ## Is This Thing Ready To Use For Anything?
 
-Yes, it's ready for experimentation, but that's about it.  But the goal is to have a real,
-useful, fast framework to develop truly realtime websites.
+Yes, it's ready for experimentation, but that's about it.
+
+The API is not fleshed out yet.  There's no databse integration, no user management.
+
+But the goal is to have a real, useful, fast framework to develop truly immersive websites 
+that are a joy to use and fun to code. 
 
 # Show Me An Example
 

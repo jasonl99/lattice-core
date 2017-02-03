@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta id="repository-name" content="github.com/jasonl99/lattice-core">
+  <link href="css/style.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript" src="js/doc.js"></script>
+  <title>README - github.com/jasonl99/lattice-core</title>
+</head>
+<body>
+
+<div id="types-list">
+  <div id="search-box">
+    <input type="search" id="search-input" placeholder="Search...">
+  </div>
+
+  <ul>
+    <li class="current"><a href="index.html">README</a></li>
+  </ul>
+
+  <ul>
+  
+  <li class="parent " data-id="github.com/jasonl99/lattice-core/Lattice" data-name="lattice">
+      <a href="Lattice.html">Lattice</a>
+      
+        <ul>
+  
+  <li class="parent " data-id="github.com/jasonl99/lattice-core/Lattice/Connected" data-name="lattice::connected">
+      <a href="Lattice/Connected.html">Connected</a>
+      
+        <ul>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebObject" data-name="lattice::connected::webobject">
+      <a href="Lattice/Connected/WebObject.html">WebObject</a>
+      
+    </li>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Connected/WebSocket" data-name="lattice::connected::websocket">
+      <a href="Lattice/Connected/WebSocket.html">WebSocket</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+  <li class="parent " data-id="github.com/jasonl99/lattice-core/Lattice/Core" data-name="lattice::core">
+      <a href="Lattice/Core.html">Core</a>
+      
+        <ul>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/Application" data-name="lattice::core::application">
+      <a href="Lattice/Core/Application.html">Application</a>
+      
+    </li>
+  
+  <li class=" " data-id="github.com/jasonl99/lattice-core/Lattice/Core/PublicStorage" data-name="lattice::core::publicstorage">
+      <a href="Lattice/Core/PublicStorage.html">PublicStorage</a>
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+      
+    </li>
+  
+</ul>
+
+</div>
+
+<div id="main-content">
+<h1>lattice-core</h1>
+
+<p>A crystal-lang framework build on kemal that takes a WebSocket-first approach to web development.</p>
+
+<h2>Background</h2>
+
+<p>Developing a website with data that updates in realtime -- instantly updating the page with changes 
+as the occur on the server -- has always a challenging task:  you are creating event models for 
+two objects:  one on the server (an object), and in the browser (a DOM node), and trying to 
+maintain state between them.</p>
+
+<p>That's challenging enough on its own.  Adding to the complexity is the fact that http is
+inherently stateless, and now every update needs a whole setup and teardown process as
+the browser creates a new request, the server creates up a new response 
+with authentication happening along the way. Add the subsequent teardown, and you're looking 
+at a <em>ton</em> of work to update an element on a page.</p>
+
+<p>The axiomatic way to do this has been use some javascript libarary that ulimately performs these
+updates over AJAX.  The updates still happen in a stateless manner -- it's just that a lot of the 
+complexity and overhead is invisibly buried and discarded by the javascript that performs the ajax.
+But make no mistake browser and the server still work <em>a lot</em> to update a little element on your
+page.</p>
+
+<p>Enter <a href="https://www.websocket.org/quantum.html" target="_blank">WebSockets</a>.  They are new, part of the HTML5 
+spec.  They will only work on modern browsers.  And to be clear, there is no intention of 
+making this framework work without them.  Think of it as a platform-specific framework:  
+Instead of Android or iOS,  it's the "socket-ready browser" platform.  And it just so happens
+that most Android and iOS browsers, as well as Chrome and FireFox on Windows, Mac, and Linux,
+all support WebSockets.</p>
+
+<h2><em>Require</em> websockets?  Why be so limiting?</h2>
+
+<p>I've been programming for a long time.  I've tried to learn different frameworks, and I've
+played around many times with the "new language of the month."  It's incredibly overwhelming
+to be faced with a new language that can do something a litle better, or that promises some
+big advantage of last month's language darling.  The bottom line is there are a ton of 
+frameworks out there already that do far more than I could ever hope to accomplish.</p>
+
+<p>But something happened for me as I started experimenting with Crystal.  I can't (and won't) 
+make any promises that you'll feel the same way.  Crystal's standard http library includes a 
+nice implementation of WebSockets that's augmented by kemalcr.  Up until a few months ago, 
+I thought WebSockets was something you used if you wanted to include video chats on your 
+web page.  Never once had I written javascript to open a websocket.  But kemal has a quick 
+and dirty chat app that intrigued me with its simplicity.  So I dug.  I'll freely admit 
+I became a little obsessed.</p>
+
+<p>As I dug deeper, I found WebSockets to be incredibly powerful for developing web apps that have
+eliminate nearly all of the overhead and complexity that comes with ajax-first development.  It
+has an awe-inspiring "the world is my oyster" power that I've experienced only a few times as a 
+programmer (off the top of my head: Visual FoxPro for Windows, and Ruby come to mind).</p>
+
+<p>In fact, your entire mindset changes - you stop thinking in terms of routing to 
+pages that render a view, and start thinking in terms of events.  Elements on your page
+are wired directly to the object on the server and vice-versa.  A button click instantly 
+changes server state, and those changes instantly go to everyone looking at that object.</p>
+
+<h2>Is This Thing Ready To Use For Anything?</h2>
+
+<p>Yes, it's ready for experimentation, but that's about it.</p>
+
+<p>The API is not fleshed out yet.  There's no databse integration, no user management.</p>
+
+<p>But the goal is to have a real, useful, fast framework to develop truly immersive websites 
+that are a joy to use and fun to code. </p>
+
+<h1>Show Me An Example</h1>
+
+<p>Ok, take a look at <a href="https://github.com/jasonl99/card_game" target="_blank">card_game</a>.  It is designed
+to illustrate the power of WebSockets in general, and this framework in particular.  You
+can clone it, update the shards, and run it in a few lines.</p>
+
+<h2>Installation</h2>
+
+<p>Add this to your application's <code>shard.yml</code>:</p>
+
+<pre><code class='language-yaml'>dependencies:
+  lattice-core:
+    github: jasonl99/lattice-core</code></pre>
+
+<h2>Usage</h2>
+
+<pre><code class='language-crystal'><span class="k">require</span> <span class="s">&quot;lattice-core&quot;</span></code></pre>
+
+<p><span class="flag orange">TODO</span>  Write usage instructions here</p>
+
+<h2>Development</h2>
+
+<p><span class="flag orange">TODO</span>  Write development instructions here</p>
+
+<h2>Contributing</h2>
+
+<ol><li>Fork it ( https://github.com/[your-github-name]/lattice-core/fork )</li><li>Create your feature branch (git checkout -b my-new-feature)</li><li>Commit your changes (git commit -am 'Add some feature')</li><li>Push to the branch (git push origin my-new-feature)</li><li>Create a new Pull Request</li></ol>
+
+<h2>Contributors</h2>
+
+<ul><li><a href="https://github.com/[your-github-name]" target="_blank">[your-github-name</a> Jason Landry - creator, maintainer</li></ul>
+</div>
+</body>
+</html>

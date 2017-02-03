@@ -21,24 +21,93 @@ module Lattice::Connected
   # An important note on incoming messages:  This class has a very specific, simple rule
   # for sending commands:  the command is the key, and the value is the payload.  The 
   # system accepts only one command per message; the first key and value are used as that command.
+
+
+
+  # WebSocket is not instantiated, but acts as a conduit for connecting individual HTTP::WebSockets
+  # to instantiated WebObjects.
+  # 
+  # REGISTERED_SESSIONS contains all known active sockets along with their associated
+  # session_id in a Hash(UInt64=>String), where socket's object_id is the key, and the
+  # session_id string is the value.  Ultimately, we have to be able to associated 
+  # sessions with sockets, and this is the most direct means and the logical place,
+  #
+  # Our ClientServer API's entry point is on_message, which is called whenever a new
+  # data comes in across the socket.  This data is, by definition, an aribrary string,
+  # but since the endpoint is known and only promises to handle this API, we shouldn't
+  # expect anything other then incoming ClientServer API messages.  
+  # 
+  # The incoming messages are validated and packaged by validate_payload, which does all
+  # the "heavy lifting" - it identifies the instantiated object and creates a reference to it,
+  # finds the associated session (if one exists) and supplies the session_id string, 
+  # and pacakges those items in an object that also contains the params of the incoming messages.
+  # 
+  # The incoming messages, which is the ClientServer API, is a very specifically-formatted
+  # object with a single key and a value object that has action and param keys.  The example
+  # below shows clicking on a card in a card_game:
+  # 
+  #```
+  # incoming messsage = {
+  # "cardgame-93893329349200-card-0": {
+  #   "action":"click",
+  #   "params": {
+  #     "src":"/images/ace_of_clubs.png" }
+  # }
   abstract class WebSocket
 
-    VALID_ACTIONS = %w(subscribe click input mouse submit)
+    # VALID_ACTIONS = %w(subscribe click input mouse submit)
     REGISTERED_SESSIONS = {} of UInt64=>String
 
-    # An incoming message is in the form
-    #    {"cardgame-123439291" : {"action":"subscribe", params: {}}}
-    #    {"cardgame-123492092-hand-3-card1" : {"action":"click", params: {x:0,y:0}}}
-    # The message is only valid if
-    # * A valid instantiated, subscribed ConnectedObject is identified from the key (data-item in the DOM)
-    # * Only on such message is received 
+    # validate_payload takes incoming message, parses it as JSON,
+    # and processes it according to the ClientServer API.  The key
+    # of the message is the data-item dom element that is the subject
+    # of the message, and the value is an object with an action and parameters.
+    # the action key of params is a string, generally maps to the javascript
+    # equivalen event when possible (those used by javascripts' addEventHandler).
+    # Currently, click, mouseenter, mouseleave, submit and input events are defined.
+    # incoming params are not checked for validity, and their values are entirely dependent
+    # on the javascript on the client (as defined in app.js).
+    # Two example incoming messages are below:
+    #```
+    # # example subscribe message
+    # {
+    #   "cardgame-93972704197200": {
+    #     "action":"subscribe",
+    #     "params": {
+    #       "session_id":"d1a602d22520ce3308427eee55376461"
+    #     }
+    #   }
+    # }
+    #
+    # # example clicking a card in card_game
+    # {
+    #   "cardgame-93893329349200-card-0": {
+    #     "action":"click",
+    #     "params": {
+    #       "src":"/images/ace_of_clubs.png" 
+    #      }
+    # }
+    #```
+    # Once parsed, the the key is used to identify and instantiate a WebObject,
+    # If a session has previously been registered with a socket, the session_id
+    # is identified.
+    # These results are packaged into an object; for example, the previous
+    # incoming `click` example is processed into this:
+    # ```
+    # {
+    #   "dom_item"    =>"cardgame-93893329349200-card-0 ,
+    #    "session_id" => "d1a602d22520ce3308427eee55376461",
+    #        "target" => #<CardGame::CardGame:0x56097059bf00>,
+    #        "params" => {
+    #           "src":"/images/ace_of_clubs.png"
+    #         }
+    # }
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
       payload = return_val.as_h
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
-        # puts "Session #{session_id} is registered to this socket"
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
@@ -51,11 +120,7 @@ module Lattice::Connected
         end
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
-      # puts "Result is #{result}"
-      # puts "Result of validation: #{result}"
-      # raise "Invalid actions #{payload.keys - VALID_ACTIONS}" unless (payload.keys - VALID_ACTIONS).empty?    
       raise "Too many actions" unless payload.keys.size == 1
-      #return_val
       result
     end
 
@@ -139,30 +204,33 @@ module Lattice::Connected
       end
     end
 
-    # When an incoming message arrives, it must be from a particular object that has
-    # already been subscribed to.  This processes the incoming message, determines which
-    # object should receive it, and sends it to that object.
-    def self.act ( action_data : Hash(String, JSON::Type), socket : HTTP::WebSocket )
-      # action data is in the form of dom=>params 
-      # FIXME this is sending subscriber_actions to all subscribed actions,
-      # not just the one that was acted upon.
+    # # When an incoming message arrives, it must be from a particular object that has
+    # # already been subscribed to.  This processes the incoming message, determines which
+    # # object should receive it, and sends it to that object.
+    # def self.act ( action_data : Hash(String, JSON::Type), socket : HTTP::WebSocket )
+    #   # action data is in the form of dom=>params 
+    #   # FIXME this is sending subscriber_actions to all subscribed actions,
+    #   # not just the one that was acted upon.
       
-      # find the object for which the action happens
-      if ( id = extract_id?( action_data.first_key) )
-        acted_object = WebObject::INSTANCES[id]
-        session_id = REGISTERED_SESSIONS[socket.object_id]?
-        acted_object.subscriber_action(action_data, session_id)
-      end
-      # subscribed_to(socket).each_value do |subscribed_object|
-      #   session_id = REGISTERED_SESSIONS[socket.object_id]?
-      #   subscribed_object.subscriber_action(action_data, session_id)
-      # end
-    end
+    #   # find the object for which the action happens
+    #   if ( id = extract_id?( action_data.first_key) )
+    #     acted_object = WebObject::INSTANCES[id]
+    #     session_id = REGISTERED_SESSIONS[socket.object_id]?
+    #     acted_object.subscriber_action(action_data, session_id)
+    #   end
+    #   # subscribed_to(socket).each_value do |subscribed_object|
+    #   #   session_id = REGISTERED_SESSIONS[socket.object_id]?
+    #   #   subscribed_object.subscriber_action(action_data, session_id)
+    #   # end
+    # end
 
     # Handle an incoming socket message
     def self.on_message(message, socket)
+      puts "message: #{message}"
+
 
       payload = validate_payload(message, socket)
+      # puts "payload: #{payload}.colorize(:yellow)"
 
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
@@ -175,50 +243,9 @@ module Lattice::Connected
           target.subscribe(socket, session_id.as(String | Nil))
         else
           session_id = payload["session_id"]?
-            target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil)) if target.subscribed?(socket)
-          #target.subscriber_action(params, session_id.as(String)) if target.subscribed?(socket)
-          # if (session_id = payload["session_id"]?)
-          # end
+            target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
         end
       end
-
-
-
-      # NEW: validate_payload now returns session, target, and action
-
-      # target = payload.as_h.first_key
-      # action = payload[target].as_h
-      
-      # begin
-      #   puts "target: #{target} / action: #{action["action"]} / params: #{action["params"]}"
-      # rescue msg
-      #   puts "Errror: #{msg}"
-      # end
-
-      # action        = payload.as_h.first_key
-      # action_params = payload[action].as_h
-
-
-      # # actions are basically VALID_ACTIONS
-      # # TODO there should be a check that all valid actions have a when statement somehow.
-      # case action
-      # when "subscribe"
-      #   subscribe(action_params, socket)
-      # # when "act"
-      # #   puts "act: #{action_params}"
-      # #   act(action_params, socket)
-      # when "submit"
-      #   puts "Form submission #{action_params}"
-      #   act(action_params, socket)
-      # when "mouse"
-      #   puts "mouse #{action_params}"
-      #   act(action_params, socket)
-      # when "input"
-      #   puts "input change #{action_params}"
-      # else
-      #   raise "no behavior defined for '#{action}' with parameters #{action_params}"
-      # end
-
 
     end
 
