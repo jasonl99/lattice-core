@@ -1,0 +1,5 @@
+# Version 0.11
+* Added the concept of components to a web object, with WebObject#listeners
+* changed behavior in app.js use data-subscribe as a means to subscribe to 
+any arbitrary webObject, with a default of data-item if empty
+empty

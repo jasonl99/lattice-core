@@ -1,15 +1,26 @@
 module Lattice::Connected
-
-  class WebObject
+  abstract class WebObject
     # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
+
     INSTANCES = Hash(UInt64, self).new      # all instances of any WebObject, across all subclasses
     @@instances = Hash(String, UInt64).new  # individual instances of this class (CardGame, City, etc)
-    property version = 0
     class_property instances
-
-    property subscribers = [] of HTTP::WebSocket   # Each instance has its own subcribers.
+    @subscribers = [] of HTTP::WebSocket
+    @listeners = [] of self
+    @version = 0
+    property version
+    property subscribers # Each instance has its own subcribers.
+    getter listeners   # we talk to objects who want to listen by sending a listen_to messsage
     property name : String
     
+    # a new thing must have a name, and that name must be unique so we can
+    # find them across instances.
+    def initialize(@name : String, listener : WebObject? = nil)
+      INSTANCES[self.object_id] = self
+      @@instances[@name] = self.object_id
+      @listeners << listener if listener
+    end
+
     # simple debugging catch early on if we are forgetting to clean up after ourselves.
     def self.display_all
       "There are a total of #{INSTANCES.size} WebObjects with a total of #{INSTANCES.values.flat_map(&.subscribers).size} subscribers"
@@ -18,6 +29,9 @@ module Lattice::Connected
     def content
     end
 
+    def to_s
+      "#{self.class.to_s.split("::").last}_#{object_id.to_s[-3..-1]}"
+    end
 
     # either the session & the value exist or its nil
     def session_string( session_id : String, value_of : String)
@@ -26,22 +40,47 @@ module Lattice::Connected
       end
     end
 
-    def update_attribute( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+    def send(msg, sockets : Array(HTTP::WebSocket))
+      sockets.each do |socket|
+        Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
+        #puts msg.class.to_s.colorize(:green).on(:white)
+        # seq_msg = SocketMessage.new
+        # seq_msg[msg.first_key] = {"id"=>msg.first_value["id"], "action"=>msg.first_value["action"]}
+        Connected.sequence "subscribers", "#{Lattice::Connected.shorten_socket socket}", "Send", msg, self
+        socket.send msg.to_json
+      end
+    end
+
+    def update_attribute( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update_attribute", "version"=>version}) }
-      subscribers.each &.send(msg.to_json)
+      Connected.sequence self.to_s, "subscribers", "update_attribute", change, self
+      send msg, subscribers
+      # subscribers.each do |sub|
+      #   Connected.log :out, "Sending #{msg} to socket #{sub.object_id}"
+      #   sub.send(msg.to_json)
+      # end
     end
 
-    def update( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+    def update( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
-      subscribers.each &.send(msg.to_json)
+      Connected.sequence self.to_s, "subscribers", "update", change, self
+      send msg, subscribers
+
     end
 
-    def insert( change : Hash(String,String | Int32), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+    def act( action : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
+      msg = {"act" => action}
+      Connected.sequence self.to_s, "subscribers", "act", action, self
+      send msg, subscribers
+    end
+
+    def insert( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
-      subscribers.each &.send(msg.to_json)
+      Connected.sequence self.to_s, "subscribers", "insert", change, self
+      send msg, subscribers
     end
 
     # Converts a dom-style id and extracts that last number from it
@@ -51,14 +90,8 @@ module Lattice::Connected
       id if id && id <= max && id >= 0
     end
 
-    # a new thing must have a name, and that name must be unique so we can
-    # find them across instances.
-    def initialize(@name : String)
-      INSTANCES[self.object_id] = self
-      @@instances[@name] = self.object_id
-    end
-
     # A subscriber, with the _session_id_ given, has oassed in an action
+    # called from WebSocket#on_message
     def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
       if session_id
         puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
@@ -67,68 +100,51 @@ module Lattice::Connected
       end
     end
 
+    # at some point, this object may have been added as a listener to another object.
+    # that means that as events occur on the other object, we also get notified of those
+    # events.  That notification is received here.
+    def listen_to(talker, dom_item, action, session_id, socket)
+      # the only defined place this is called is WebSocket#on_message
+      puts "#{self.to_s} just heard #{talker.to_s} just had the dom element with data-item=#{dom_item} do #{action}".colorize(:red).on(:white)
+    end
 
-    # def subscriber_action(data, session_id = nil)
-    #   puts "#{self.class}(#{self.name}) just received #{data} from session #{session_id}"
-    # end
+    # if you're a really popular object, other objects want to hear what you have to say.  This
+    # gives those object a change to register their interest.  Any listener gets a notification
+    # when an event occurs on a listened-to object
+    def add_listener( listener : WebObject)
+      @listeners << listener unless @listeners.includes? listener
+    end
 
-    # a socket has requested a subscription to this object.  This means it will send & receive
-    # messages across the _socket_ passed.  It is the initial handshake to a user  
-    # It is the initial handshake between client and server.
-    # def subscribe( socket : HTTP::WebSocket )
-    #   unless subscribers.includes? socket
-    #     subscribers << socket
-    #     session_id = Lattice::Connected::WebSocket::REGISTERED_SESSIONS[socket.object_id]?  
-    #     subscribed session_id, socket if session_id
-    #   end
-    # end
+    # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
+    # the other end of the endpoint is the user's browser.  Since each browser does it, it's 
+    # a one-to-many relationship (one server object to many browser sockets).
     def subscribe( socket : HTTP::WebSocket , session_id : String?)
       unless subscribers.includes? socket
         subscribers << socket
         subscribed session_id, socket if session_id
       else
+        # if things are working correctly, we shouldn't ever see this.
         puts "socket #{socket.object_id} already in #{subscribers.map &.object_id}".colorize(:red)
       end
     end
 
-    # This is a key piece for handling idividualization of a connected object.
-    # A socket must subscribe to connected object, and #subscribe
-    # automatically looks up the session_id for the socket, and if there is an 
-    # association calls the this method with both the session and socket.  This is
-    # This would be a time to establish any data structures necessary for a pareticular
-    # subsubcription -- for example one hand in a card game, or a user's pot in a poker
-    # game.
-    # since updates go across sockets, it would make sense to do something with the object_id
-    # of the socket as a reference.
-    #```ruby
-    # property subscribers : [] of HTTP::WebSocket
-    # property player_hands : {} of UInt64 => Array(String)
-    #  
-    # def subscribed (session_id, socket)
-    #   player_hands[socket.object_id] = draw_cards...
-    # end
-    # 
-    # def display_hands
-    #   self.subscribers.each_with_index do |socket, idx|
-    #     hand = player_hands[socket.object_id]
-    #     socket.update({"id"=>"#{dom_id}-mycard-#{idx}", "value"=>hand[idx]})
-    #   end
-    # end
-    #```
+    # this session and socket are now subscribed to this object
     def subscribed( session_id : String, socket : HTTP::WebSocket)
     end
 
+    # tests if a socket is subscribed
     def subscribed?( socket : HTTP::WebSocket)
       subscribers.includes? socket
     end
+
     # delete a subscription for _socket_
     def unsubscribe( socket : HTTP::WebSocket)
       subscribers.delete(socket)
+      unsubscribed socket
     end
 
+    # this socket is now unsubscribed from this object
     def unsubscribed( socket : HTTP::WebSocket)
-      subscribers.delete(socket)
-      unsubscribed socket
     end
 
     # Called during page rendering prep as a spinup for an object.  Instantiate a new 

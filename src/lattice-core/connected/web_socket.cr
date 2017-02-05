@@ -53,9 +53,58 @@ module Lattice::Connected
   #   "params": {
   #     "src":"/images/ace_of_clubs.png" }
   # }
+
+  SEQUENCE_DISPLAY = CardGame::Sequence.new("sequencer")
+  SOCKET_LOGGER = Logger.new(File.open("./connected.log","a"))
+  SOCKET_LOGGER.level = Logger::DEBUG
+  SOCKET_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|
+    # io << severity[0] << ", [" << datetime << " #" << Process.pid << "] "
+    # io << severity.rjust(5) << " -- " << progname << ": " << message
+    io << message
+  end
+  SEQUENCE_LOGGER = Logger.new(File.open("./sequence.log","a"))
+  SEQUENCE_LOGGER.level = Logger::DEBUG
+  SEQUENCE_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|
+    # io << severity[0] << ", [" << datetime << " #" << Process.pid << "] "
+    # io << severity.rjust(5) << " -- " << progname << ": " << message
+    io << message
+  end
+
+  def self.shorten_socket(socket)
+    "socket_#{socket.object_id.to_s[-3..-1]}"
+  end
+
+  def self.shorten_session(session_id)
+    "session_#{session_id[-3..-1]}"
+  end
+
+  def self.sequence(from, to, message, detail, sender = nil)
+    Lattice::Connected::SEQUENCE_LOGGER.info "#{from}->>#{to}: #{message}"
+    SEQUENCE_DISPLAY.add_item(from,to, message, detail) unless sender && sender.class.to_s.split("::").last == "Sequence"
+  end
+
+  def self.log(indicator, message, level = :default)
+    colorized_indicator = 
+      case indicator
+      when :in
+        "data in".colorize(:red).on(:white)
+      when :out
+        "data out".colorize(:green).on(:white)
+      when :process
+        "process ".colorize(:light_gray).on(:dark_gray)
+      when :validate
+        "validate".colorize(:light_gray).on(:dark_gray)
+      else
+        "UNKNOWN".colorize(:white).on(:red)
+      end
+    Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
+  end
+
   abstract class WebSocket
 
+
     # VALID_ACTIONS = %w(subscribe click input mouse submit)
+
     REGISTERED_SESSIONS = {} of UInt64=>String
 
     # validate_payload takes incoming message, parses it as JSON,
@@ -109,12 +158,14 @@ module Lattice::Connected
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
+        log :validate, "Identified socket #{socket.object_id}"
       end
       if (data_item = self.extract_id?(dom_item))
         if (target = Lattice::Connected::WebObject::INSTANCES[data_item]?)
           # if target.subscribed? socket
           #   puts "The socket is subscribed to the target"
           # end
+          log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
         end
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
@@ -157,9 +208,11 @@ module Lattice::Connected
     # each socket's object_id is used as they key, and the session's id as the value.  This
     # makes it trivial to find a session by a socket.
     # in this case we simply set the value, overwriting any that may be present
-    def self.register_session(session, socket)
-      REGISTERED_SESSIONS[socket.object_id] = session.id
-      puts "REGISTERED_SESSIONS.size #{REGISTERED_SESSIONS.size}".colorize(:green) #debug
+    def self.register_session(session_id : String, socket : HTTP::WebSocket)
+      REGISTERED_SESSIONS[socket.object_id] = session_id
+      log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
+      # TODO: Add note to left of socket
+      #Connected.sequence "#{Lattice::Connected.shorten_socket socket}", "register_session", "#{Lattice::Connected.shorten_session session_id}"
     end
 
     # A socket is created at the page-level; there may be dozens of DOM objects that 
@@ -168,17 +221,17 @@ module Lattice::Connected
     # to subscribe.  After the session has been verified and registered, we extract the ids
     # from subscribed_data and send the `subscribe` message with out socket to each 
     # object.
-    def self.subscribe( subscribe_data : Hash(String, JSON::Type) | Nil, socket : HTTP::WebSocket )
-      # verify that a session exists, otherwise we don't allow a subscription
-      return unless subscribe_data && (session = verify_session(subscribe_data["sessionID"].to_s))
-      register_session(session.as(Session), socket)
-      supplied_ids = extract_ids(subscribe_data["ids"].as(Array(JSON::Type)))
-      supplied_ids.each do |id| 
-        WebObject::INSTANCES[id].subscribe(socket)
-      end
-      memory_used
+    # def self.subscribe( subscribe_data : Hash(String, JSON::Type) | Nil, socket : HTTP::WebSocket )
+    #   # verify that a session exists, otherwise we don't allow a subscription
+    #   return unless subscribe_data && (session = verify_session(subscribe_data["sessionID"].to_s))
+    #   register_session(session.as(Session), socket)
+    #   supplied_ids = extract_ids(subscribe_data["ids"].as(Array(JSON::Type)))
+    #   supplied_ids.each do |id| 
+    #     WebObject::INSTANCES[id].subscribe(socket)
+    #   end
+    #   memory_used
 
-    end
+    # end
 
     # a debugging aid to show how much data we have laying around
     def self.memory_used
@@ -223,11 +276,27 @@ module Lattice::Connected
     # end
 
     # Handle an incoming socket message
-    def self.on_message(message, socket)
-      puts "message: #{message}"
+    def self.log(indicator, message, level = :default)
+      colorized_indicator = case indicator
+      when :in
+        "Data In".colorize(:red).on(:white)
+      when :out
+        "Data Out".colorize(:green).on(:white)
+      when :process
+        "Process ".colorize(:light_gray).on(:dark_gray)
+      when :validate
+        "Validate".colorize(:light_gray).on(:dark_gray)
+      else
+        "UNKNOWN".colorize(:white).on(:red)
+      end
+      Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
+    end
 
+    def self.on_message(message, socket)
 
       payload = validate_payload(message, socket)
+      log :in, "message: #{message} from socket #{socket.object_id}"
+      Connected.sequence "#{Lattice::Connected.shorten_socket socket}","on_message", "Event: #{payload.first_key}", message
       # puts "payload: #{payload}.colorize(:yellow)"
 
       if (target = payload["target"]?)
@@ -237,11 +306,14 @@ module Lattice::Connected
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
-          REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+          # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+          register_session(session_id.as(String), socket) if session_id
           target.subscribe(socket, session_id.as(String | Nil))
         else
           session_id = payload["session_id"]?
-            target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
+          target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
+          #puts "Listeners for #{target.name}: #{target.listeners.map &.class.to_s}".colorize(:red)
+          target.listeners.each {|listener| listener.listen_to target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end
 
@@ -250,6 +322,7 @@ module Lattice::Connected
     # when a socket is closed we have to remove it from all of the subscriptions it took 
     # part in as well as from registered sessions.
     def self.on_close(socket)
+      log :process, "Closing socket #{socket.object_id}"
       WebObject::INSTANCES.values.each &.unsubscribe(socket)
       REGISTERED_SESSIONS.delete socket.object_id
     end

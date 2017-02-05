@@ -128,13 +128,35 @@ function connectEvents(socket) {
 // handle an incoming message over the socket
 function handleSocketMessage(message) {
   payload = JSON.parse(message);
-  console.log("ServerClient Message: ", payload)
   if ("dom" in payload) {
+    console.log("ServerClient Dom: ", payload.dom)
     modifyDOM(payload.dom);
   }
+  if ("act" in payload) {
+    console.log("ServerClient Act: ", payload.act)
+    takeAction(payload.act);
+  }
+
 }
 
-
+function takeAction(domData) {
+  if (matches = document.querySelectorAll("[data-item='" + domData.id + "']" )) {
+    for (var i=0; i<matches.length; i++) {
+      el = matches[i];
+      switch (domData.action) {
+        case "sequenceDiagram":
+          var diagram = Diagram.parse(domData.value)
+          el.innerHTML = ""
+          // console.log("el",el)
+          diagram.drawSVG("sequence", {theme: "simple"})
+          break;
+      }
+      // el.closest("[data-version]").setAttribute("data-version",domData.version)
+    }
+  } else {
+      console.log("cound not locate element " + domData.id)
+  }
+}
 
 // modify the dom based on the imformation contained in domData
 function modifyDOM(domData) {
