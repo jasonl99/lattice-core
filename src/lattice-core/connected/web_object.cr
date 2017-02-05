@@ -1,5 +1,5 @@
 module Lattice::Connected
-  abstract class WebObject
+ abstract class WebObject
     # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
 
     INSTANCES = Hash(UInt64, self).new      # all instances of any WebObject, across all subclasses
@@ -43,43 +43,30 @@ module Lattice::Connected
     def send(msg, sockets : Array(HTTP::WebSocket))
       sockets.each do |socket|
         Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
-        #puts msg.class.to_s.colorize(:green).on(:white)
-        # seq_msg = SocketMessage.new
-        # seq_msg[msg.first_key] = {"id"=>msg.first_value["id"], "action"=>msg.first_value["action"]}
-        Connected.sequence "subscribers", "#{Lattice::Connected.shorten_socket socket}", "Send", msg, self
         socket.send msg.to_json
       end
     end
 
-    def update_attribute( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+    def update_attribute( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update_attribute", "version"=>version}) }
-      Connected.sequence self.to_s, "subscribers", "update_attribute", change, self
       send msg, subscribers
-      # subscribers.each do |sub|
-      #   Connected.log :out, "Sending #{msg} to socket #{sub.object_id}"
-      #   sub.send(msg.to_json)
-      # end
     end
 
-    def update( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+    def update( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
-      Connected.sequence self.to_s, "subscribers", "update", change, self
       send msg, subscribers
-
     end
 
-    def act( action : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
+    def act( action : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
       msg = {"act" => action}
-      Connected.sequence self.to_s, "subscribers", "act", action, self
       send msg, subscribers
     end
 
-    def insert( change : SocketMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
+    def insert( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
       self.version +=1
       msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
-      Connected.sequence self.to_s, "subscribers", "insert", change, self
       send msg, subscribers
     end
 

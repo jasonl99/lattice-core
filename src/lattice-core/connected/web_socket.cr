@@ -21,9 +21,7 @@ module Lattice::Connected
   # An important note on incoming messages:  This class has a very specific, simple rule
   # for sending commands:  the command is the key, and the value is the payload.  The 
   # system accepts only one command per message; the first key and value are used as that command.
-
-
-
+  #
   # WebSocket is not instantiated, but acts as a conduit for connecting individual HTTP::WebSockets
   # to instantiated WebObjects.
   # 
@@ -53,53 +51,6 @@ module Lattice::Connected
   #   "params": {
   #     "src":"/images/ace_of_clubs.png" }
   # }
-
-  SEQUENCE_DISPLAY = CardGame::Sequence.new("sequencer")
-  SOCKET_LOGGER = Logger.new(File.open("./connected.log","a"))
-  SOCKET_LOGGER.level = Logger::DEBUG
-  SOCKET_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|
-    # io << severity[0] << ", [" << datetime << " #" << Process.pid << "] "
-    # io << severity.rjust(5) << " -- " << progname << ": " << message
-    io << message
-  end
-  SEQUENCE_LOGGER = Logger.new(File.open("./sequence.log","a"))
-  SEQUENCE_LOGGER.level = Logger::DEBUG
-  SEQUENCE_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|
-    # io << severity[0] << ", [" << datetime << " #" << Process.pid << "] "
-    # io << severity.rjust(5) << " -- " << progname << ": " << message
-    io << message
-  end
-
-  def self.shorten_socket(socket)
-    "socket_#{socket.object_id.to_s[-3..-1]}"
-  end
-
-  def self.shorten_session(session_id)
-    "session_#{session_id[-3..-1]}"
-  end
-
-  def self.sequence(from, to, message, detail, sender = nil)
-    Lattice::Connected::SEQUENCE_LOGGER.info "#{from}->>#{to}: #{message}"
-    SEQUENCE_DISPLAY.add_item(from,to, message, detail) unless sender && sender.class.to_s.split("::").last == "Sequence"
-  end
-
-  def self.log(indicator, message, level = :default)
-    colorized_indicator = 
-      case indicator
-      when :in
-        "data in".colorize(:red).on(:white)
-      when :out
-        "data out".colorize(:green).on(:white)
-      when :process
-        "process ".colorize(:light_gray).on(:dark_gray)
-      when :validate
-        "validate".colorize(:light_gray).on(:dark_gray)
-      else
-        "UNKNOWN".colorize(:white).on(:red)
-      end
-    Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
-  end
-
   abstract class WebSocket
 
 
@@ -152,6 +103,9 @@ module Lattice::Connected
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
       payload = return_val.as_h
+      # payload must be a valid ConnectedMessage.
+      puts "payload class: #{payload.class}".colorize(:white).on(:blue)
+      puts "as(IncomingMessage) : #{payload.as(IncomingMessage).class}".colorize(:white).on(:dark_gray)
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
@@ -211,8 +165,6 @@ module Lattice::Connected
     def self.register_session(session_id : String, socket : HTTP::WebSocket)
       REGISTERED_SESSIONS[socket.object_id] = session_id
       log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
-      # TODO: Add note to left of socket
-      #Connected.sequence "#{Lattice::Connected.shorten_socket socket}", "register_session", "#{Lattice::Connected.shorten_session session_id}"
     end
 
     # A socket is created at the page-level; there may be dozens of DOM objects that 
@@ -296,8 +248,6 @@ module Lattice::Connected
 
       payload = validate_payload(message, socket)
       log :in, "message: #{message} from socket #{socket.object_id}"
-      Connected.sequence "#{Lattice::Connected.shorten_socket socket}","on_message", "Event: #{payload.first_key}", message
-      # puts "payload: #{payload}.colorize(:yellow)"
 
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
