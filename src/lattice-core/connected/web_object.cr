@@ -1,4 +1,5 @@
 require "digest/sha1"
+require "./event_observer"
 module Lattice::Connected
 
   abstract class WebObject
@@ -9,18 +10,18 @@ module Lattice::Connected
     @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
     class_getter instances
     @subscribers = [] of HTTP::WebSocket
-    @listeners = [] of self
+    @observers = [] of self
     @version = 0
     property version
     property subscribers # Each instance has its own subcribers.
-    getter listeners   # we talk to objects who want to listen by sending a listen_to messsage
+    getter observers   # we talk to objects who want to listen by sending a listen_to messsage
     property name : String
 
     # a new thing must have a name, and that name must be unique so we can
     # find them across instances.
-    def initialize(@name : String, listener : WebObject? = nil)
+    def initialize(@name : String, observer : WebObject? = nil)
       self.class.add_instance self
-      @listeners << listener if listener
+      @observers << observer if observer
     end
 
     # keep track of all instances, both at the class level (each subclass) and the 
@@ -98,19 +99,22 @@ module Lattice::Connected
       end
     end
 
-    # at some point, this object may have been added as a listener to another object.
+    # at some point, this object may have been added as a observe to another object.
     # that means that as events occur on the other object, we also get notified of those
     # events.  That notification is received here.
-    def listen_to(talker, dom_item, action, session_id, socket)
-      # the only defined place this is called is WebSocket#on_message
-      puts "#{self.to_s} just heard #{talker.to_s} just had the dom element with data-item=#{dom_item} do #{action}".colorize(:red).on(:white)
+    def observe(talker, dom_item, action, session_id, socket)
+      on_event ConnectedEvent.new( talker, dom_item, action, session_id, socket)
+    end
+
+    def on_event(event : ConnectedEvent)
+      puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s}"
     end
 
     # if you're a really popular object, other objects want to hear what you have to say.  This
-    # gives those object a change to register their interest.  Any listener gets a notification
+    # gives those object a change to register their interest.  Any observer gets a notification
     # when an event occurs on a listened-to object
-    def add_listener( listener : WebObject)
-      @listeners << listener unless @listeners.includes? listener
+    def add_observer( observer : WebObject)
+      @observers << observer unless @observers.includes? observer
     end
 
     # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
@@ -201,7 +205,7 @@ module Lattice::Connected
 
     # this creates a connection back to the serverm immediately calls back with a session_id
     # and the element ids to which to subscribe.
-    # It then creates event listeners for actions on subscribed objects, currently
+    # It then creates event observers for actions on subscribed objects, currently
     # just click events (more will come)
     # FIXME we have a problem right now when the same object is on the page twice: it only
     # updates one of them since document.getElementById only returns the first match.

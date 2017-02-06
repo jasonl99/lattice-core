@@ -15,8 +15,9 @@ module Lattice
       MAX_EVENTS = 25
       @events = RingBuffer(ConnectedEvent).new(size: MAX_EVENTS)
 
-      def listen_to(talker, dom_item, action, session_id, socket)
-        @events << ConnectedEvent.new( talker, dom_item, action, session_id, socket)
+      def observe(talker, dom_item, action, session_id, socket)
+        event = ConnectedEvent.new( talker, dom_item, action, session_id, socket)
+        @events << event
         super
       end
 

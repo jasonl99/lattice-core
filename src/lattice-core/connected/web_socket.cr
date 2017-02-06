@@ -242,6 +242,7 @@ module Lattice::Connected
       Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
     end
 
+    # OPTIMIZE possibly use ConnectedMessage for both `#subsriber_action` and `#observer`.
     def self.on_message(message, socket)
 
       payload = validate_payload(message, socket)
@@ -260,8 +261,7 @@ module Lattice::Connected
         else
           session_id = payload["session_id"]?
           target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          #puts "Listeners for #{target.name}: #{target.listeners.map &.class.to_s}".colorize(:red)
-          target.listeners.each {|listener| listener.listen_to target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
+          target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end
 
