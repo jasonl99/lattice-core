@@ -259,9 +259,11 @@ module Lattice::Connected
           register_session(session_id.as(String), socket) if session_id
           target.subscribe(socket, session_id.as(String | Nil))
         else
+          # FIXME this can now just be a simple call (on_event) in target
           session_id = payload["session_id"]?
           target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
+          target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
+          #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end
 

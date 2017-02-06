@@ -80,6 +80,7 @@ module Lattice
       def insert( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
         self.version +=1
         msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
+        puts "subscriber count: #{subscribers.size}".colorize(:red) if subscribers.size == 0
         send msg, subscribers
       end
 
@@ -100,22 +101,18 @@ module Lattice
         end
       end
 
-      # at some point, this object may have been added as a observe to another object.
-      # that means that as events occur on the other object, we also get notified of those
-      # events.  That notification is received here.
-      def observe(talker, dom_item, action, session_id, socket)
-        on_event ConnectedEvent.new( talker, dom_item, action, session_id, socket)
-      end
-
-      def on_event(event : ConnectedEvent)
-        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s}"
-      end
-
       # if you're a really popular object, other objects want to hear what you have to say.  This
       # gives those object a change to register their interest.  Any observer gets a notification
       # when an event occurs on a listened-to object
       def add_observer( observer : WebObject)
         @observers << observer unless @observers.includes? observer
+      end
+
+      # target.notify_observers target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
+      def notify_observers( dom_item, params, session_id, socket)
+        observers.each do |observer|
+          observer.as(EventObserver).observe talker: self, dom_item: dom_item, action: params, session_id: session_id, socket: socket
+        end
       end
 
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
@@ -192,7 +189,14 @@ module Lattice
         # the classname-signature as a dom_id.  The signature is something that is sufficiently
         # random that we can quickly determine if an object is "real".
         if (obj = from_signature(signature))
+          puts "--- match, class is  #{obj.class.to_s.split("::").last}"
           return obj if obj.class.to_s.split("::").last == klass
+        else
+          puts "----------------------------"
+          puts "NO MATCH"
+          puts obj
+          puts dom
+          puts "-----------------------------"
         end
       end
 
@@ -224,6 +228,7 @@ module Lattice
               // OPTIMIZE - would it be better to get the id from data-subscribe rather than data-item?
               msg[ subs[i].getAttribute("data-item") ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
               evt.target.send(JSON.stringify(msg))
+              console.log(msg)
             }
 
         };
