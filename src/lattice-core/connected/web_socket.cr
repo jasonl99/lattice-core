@@ -114,13 +114,11 @@ module Lattice::Connected
         # end
         log :validate, "Identified socket #{socket.object_id}"
       end
-      if (data_item = self.extract_id?(dom_item))
-        if (target = Lattice::Connected::WebObject::INSTANCES[data_item]?)
-          # if target.subscribed? socket
-          #   puts "The socket is subscribed to the target"
-          # end
-          log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
-        end
+      if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
+        # if target.subscribed? socket
+        #   puts "The socket is subscribed to the target"
+        # end
+        log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
       raise "Too many actions" unless payload.keys.size == 1
@@ -138,25 +136,25 @@ module Lattice::Connected
     # and end up with an array like this ["3","198272"], where the largest numeric id is 
     # used and the others disccard (we ignore 3player, but use city-3 since it's the only 
     # one).  This array is turned into Unit64s with only instantiated objects being returned
-    def self.extract_ids( source : Array(JSON::Type) | Nil ) : Array(UInt64) 
-      return [] of UInt64 unless source
-      # ids maybe look like "45-cardgame-12312" so we only care about "-digits"
-      uids = source.map(&.to_s).compact.map do |array_element|
-        # this siplits the above example into ["45",12312"]
-        # this is then converted u64 and the largest value returned
-        # can't use squeeze here
-        dom_numbers = array_element.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
-        dom_numbers.map(&.to_u64).sort.last
-      end
-      uids.select {|the_id| WebObject::INSTANCES.has_key?(the_id)}
-    end
+    # def self.extract_ids( source : Array(JSON::Type) | Nil ) : Array(UInt64) 
+    #   return [] of UInt64 unless source
+    #   # ids maybe look like "45-cardgame-12312" so we only care about "-digits"
+    #   uids = source.map(&.to_s).compact.map do |array_element|
+    #     # this siplits the above example into ["45",12312"]
+    #     # this is then converted u64 and the largest value returned
+    #     # can't use squeeze here
+    #     dom_numbers = array_element.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
+    #     dom_numbers.map(&.to_u64).sort.last
+    #   end
+    #   uids.select {|the_id| WebObject::INSTANCES.has_key?(the_id)}
+    # end
 
     # given a socket, return an array of all instantiated WebObjects to which
     # the socket is subscribed.  For example, if a person is watching scores for 10 games
     # on a page, it would return the the ten NFLGame instances.
-    def self.subscribed_to( socket : HTTP::WebSocket)
-      WebObject::INSTANCES.select {|k,obj| obj.subscribers.includes? socket}
-    end
+    # def self.subscribed_to( socket : HTTP::WebSocket)
+    #   WebObject::INSTANCES.select {|k,obj| obj.subscribers.includes? socket}
+    # end
 
     # Sockets and Sessions are tied together by the associative hash REGISTERED_SESSIONS.
     # each socket's object_id is used as they key, and the session's id as the value.  This

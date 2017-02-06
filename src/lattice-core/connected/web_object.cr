@@ -1,10 +1,13 @@
+require "digest/sha1"
 module Lattice::Connected
- abstract class WebObject
-    # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
 
-    INSTANCES = Hash(UInt64, self).new      # all instances of any WebObject, across all subclasses
-    @@instances = Hash(String, UInt64).new  # individual instances of this class (CardGame, City, etc)
-    class_property instances
+  abstract class WebObject
+    # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
+    SIGNATURE_SIZE = 8 # the number of SHA256 digits to include in the instance signature
+    @signature : String?
+    INSTANCES = Hash(String, self).new      # all instance, with key as signature
+    @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
+    class_getter instances
     @subscribers = [] of HTTP::WebSocket
     @listeners = [] of self
     @version = 0
@@ -12,13 +15,19 @@ module Lattice::Connected
     property subscribers # Each instance has its own subcribers.
     getter listeners   # we talk to objects who want to listen by sending a listen_to messsage
     property name : String
-    
+
     # a new thing must have a name, and that name must be unique so we can
     # find them across instances.
     def initialize(@name : String, listener : WebObject? = nil)
-      INSTANCES[self.object_id] = self
-      @@instances[@name] = self.object_id
+      self.class.add_instance self
       @listeners << listener if listener
+    end
+
+    # keep track of all instances, both at the class level (each subclass) and the 
+    # abstract class level.
+    def self.add_instance( instance : WebObject)
+      INSTANCES[instance.signature] = instance
+      @@instances[instance.name] = instance.signature
     end
 
     # simple debugging catch early on if we are forgetting to clean up after ourselves.
@@ -29,8 +38,9 @@ module Lattice::Connected
     def content
     end
 
+    # useful for logging, etc
     def to_s
-      "#{self.class.to_s.split("::").last}_#{object_id.to_s[-3..-1]}"
+      dom_id
     end
 
     # either the session & the value exist or its nil
@@ -40,7 +50,8 @@ module Lattice::Connected
       end
     end
 
-    def send(msg, sockets : Array(HTTP::WebSocket))
+    # send a message to given sockets
+    def send(msg : OutgoingMessage, sockets : Array(HTTP::WebSocket))
       sockets.each do |socket|
         Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
         socket.send msg.to_json
@@ -137,9 +148,8 @@ module Lattice::Connected
     # Called during page rendering prep as a spinup for an object.  Instantiate a new 
     # object (if requested), return the javascript and object for rendering.
     def self.preload(name : String, session_id : String, create = true)
-      existing = @@instances.fetch(name,nil)
-      if existing
-        target = INSTANCES[existing]
+      if (existing = @@instances.fetch(name,nil))
+        target = from_signature(existing)
       else
         target = new(name)
       end
@@ -151,11 +161,42 @@ module Lattice::Connected
       "connected_object"
     end
    
-    # The dom id .i.e <div id="abc"> for this object.  When later parsing this value
-    # the system will look for the largest valued number in the dom_id, so it is ok
-    # to use values like "clock24-11929238" which would return 11929238.
+    # # The dom id .i.e <div id="abc"> for this object.  When later parsing this value
+    # # the system will look for the largest valued number in the dom_id, so it is ok
+    # # to use values like "clock24-11929238" which would return 11929238.
+    # def dom_id
+    #   "#{self.class.to_s.split("::").last.downcase}-#{object_id}"
+    # end
+
+    # a publicly-consumable id that can be used to find the object in ##from_dom_id
     def dom_id
-      "#{self.class.to_s.split("::").last.downcase}-#{object_id}"
+        @dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
+    end
+    
+    # come up with a signature that is unique to an instantiated object.
+    def signature
+      @signature ||= Digest::SHA1.hexdigest("#{self.class} #{self.object_id} #{Random.rand}")[0..SIGNATURE_SIZE - 1]
+    end
+
+    # given a dom_id, attempt to figure out if it is already instantiated
+    # as k/v in INSTANCES, or instantiate it if possible.
+    def self.from_dom_id( dom : String)
+      klass, signature = dom.split("-").first(2)
+      # for objects that stay instantiated on the server (objects that are being used
+      # by multiple people or that require frequent updates) the default is to use
+      # the classname-signature as a dom_id.  The signature is something that is sufficiently
+      # random that we can quickly determine if an object is "real".
+      if (obj = from_signature(signature))
+        return obj if obj.class.to_s.split("::").last == klass
+      end
+    end
+
+    def self.from_signature( signature : String)
+      if (match = /^[0-9,a-f]{#{SIGNATURE_SIZE}}$/.match signature)
+        if ( instance = INSTANCES[signature]? )
+          return instance
+        end
+      end
     end
 
     # this creates a connection back to the serverm immediately calls back with a session_id
