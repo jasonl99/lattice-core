@@ -21,9 +21,7 @@ module Lattice::Connected
   # An important note on incoming messages:  This class has a very specific, simple rule
   # for sending commands:  the command is the key, and the value is the payload.  The 
   # system accepts only one command per message; the first key and value are used as that command.
-
-
-
+  #
   # WebSocket is not instantiated, but acts as a conduit for connecting individual HTTP::WebSockets
   # to instantiated WebObjects.
   # 
@@ -55,7 +53,9 @@ module Lattice::Connected
   # }
   abstract class WebSocket
 
+
     # VALID_ACTIONS = %w(subscribe click input mouse submit)
+
     REGISTERED_SESSIONS = {} of UInt64=>String
 
     # validate_payload takes incoming message, parses it as JSON,
@@ -103,19 +103,22 @@ module Lattice::Connected
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
       payload = return_val.as_h
+      # payload must be a valid ConnectedMessage.
+      puts "payload class: #{payload.class}".colorize(:white).on(:blue)
+      puts "as(IncomingMessage) : #{payload.as(IncomingMessage).class}".colorize(:white).on(:dark_gray)
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
+        log :validate, "Identified socket #{socket.object_id}"
       end
-      if (data_item = self.extract_id?(dom_item))
-        if (target = Lattice::Connected::WebObject::INSTANCES[data_item]?)
-          # if target.subscribed? socket
-          #   puts "The socket is subscribed to the target"
-          # end
-        end
+      if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
+        # if target.subscribed? socket
+        #   puts "The socket is subscribed to the target"
+        # end
+        log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
       raise "Too many actions" unless payload.keys.size == 1
@@ -133,33 +136,33 @@ module Lattice::Connected
     # and end up with an array like this ["3","198272"], where the largest numeric id is 
     # used and the others disccard (we ignore 3player, but use city-3 since it's the only 
     # one).  This array is turned into Unit64s with only instantiated objects being returned
-    def self.extract_ids( source : Array(JSON::Type) | Nil ) : Array(UInt64) 
-      return [] of UInt64 unless source
-      # ids maybe look like "45-cardgame-12312" so we only care about "-digits"
-      uids = source.map(&.to_s).compact.map do |array_element|
-        # this siplits the above example into ["45",12312"]
-        # this is then converted u64 and the largest value returned
-        # can't use squeeze here
-        dom_numbers = array_element.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
-        dom_numbers.map(&.to_u64).sort.last
-      end
-      uids.select {|the_id| WebObject::INSTANCES.has_key?(the_id)}
-    end
+    # def self.extract_ids( source : Array(JSON::Type) | Nil ) : Array(UInt64) 
+    #   return [] of UInt64 unless source
+    #   # ids maybe look like "45-cardgame-12312" so we only care about "-digits"
+    #   uids = source.map(&.to_s).compact.map do |array_element|
+    #     # this siplits the above example into ["45",12312"]
+    #     # this is then converted u64 and the largest value returned
+    #     # can't use squeeze here
+    #     dom_numbers = array_element.gsub(/[^0-9]+/,' ').squeeze(' ').strip.split(" ")
+    #     dom_numbers.map(&.to_u64).sort.last
+    #   end
+    #   uids.select {|the_id| WebObject::INSTANCES.has_key?(the_id)}
+    # end
 
     # given a socket, return an array of all instantiated WebObjects to which
     # the socket is subscribed.  For example, if a person is watching scores for 10 games
     # on a page, it would return the the ten NFLGame instances.
-    def self.subscribed_to( socket : HTTP::WebSocket)
-      WebObject::INSTANCES.select {|k,obj| obj.subscribers.includes? socket}
-    end
+    # def self.subscribed_to( socket : HTTP::WebSocket)
+    #   WebObject::INSTANCES.select {|k,obj| obj.subscribers.includes? socket}
+    # end
 
     # Sockets and Sessions are tied together by the associative hash REGISTERED_SESSIONS.
     # each socket's object_id is used as they key, and the session's id as the value.  This
     # makes it trivial to find a session by a socket.
     # in this case we simply set the value, overwriting any that may be present
-    def self.register_session(session, socket)
-      REGISTERED_SESSIONS[socket.object_id] = session.id
-      puts "REGISTERED_SESSIONS.size #{REGISTERED_SESSIONS.size}".colorize(:green) #debug
+    def self.register_session(session_id : String, socket : HTTP::WebSocket)
+      REGISTERED_SESSIONS[socket.object_id] = session_id
+      log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
     end
 
     # A socket is created at the page-level; there may be dozens of DOM objects that 
@@ -168,17 +171,17 @@ module Lattice::Connected
     # to subscribe.  After the session has been verified and registered, we extract the ids
     # from subscribed_data and send the `subscribe` message with out socket to each 
     # object.
-    def self.subscribe( subscribe_data : Hash(String, JSON::Type) | Nil, socket : HTTP::WebSocket )
-      # verify that a session exists, otherwise we don't allow a subscription
-      return unless subscribe_data && (session = verify_session(subscribe_data["sessionID"].to_s))
-      register_session(session.as(Session), socket)
-      supplied_ids = extract_ids(subscribe_data["ids"].as(Array(JSON::Type)))
-      supplied_ids.each do |id| 
-        WebObject::INSTANCES[id].subscribe(socket)
-      end
-      memory_used
+    # def self.subscribe( subscribe_data : Hash(String, JSON::Type) | Nil, socket : HTTP::WebSocket )
+    #   # verify that a session exists, otherwise we don't allow a subscription
+    #   return unless subscribe_data && (session = verify_session(subscribe_data["sessionID"].to_s))
+    #   register_session(session.as(Session), socket)
+    #   supplied_ids = extract_ids(subscribe_data["ids"].as(Array(JSON::Type)))
+    #   supplied_ids.each do |id| 
+    #     WebObject::INSTANCES[id].subscribe(socket)
+    #   end
+    #   memory_used
 
-    end
+    # end
 
     # a debugging aid to show how much data we have laying around
     def self.memory_used
@@ -223,12 +226,27 @@ module Lattice::Connected
     # end
 
     # Handle an incoming socket message
-    def self.on_message(message, socket)
-      puts "message: #{message}"
+    def self.log(indicator, message, level = :default)
+      colorized_indicator = case indicator
+      when :in
+        "Data In".colorize(:red).on(:white)
+      when :out
+        "Data Out".colorize(:green).on(:white)
+      when :process
+        "Process ".colorize(:light_gray).on(:dark_gray)
+      when :validate
+        "Validate".colorize(:light_gray).on(:dark_gray)
+      else
+        "UNKNOWN".colorize(:white).on(:red)
+      end
+      Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
+    end
 
+    # OPTIMIZE possibly use ConnectedMessage for both `#subsriber_action` and `#observer`.
+    def self.on_message(message, socket)
 
       payload = validate_payload(message, socket)
-      # puts "payload: #{payload}.colorize(:yellow)"
+      log :in, "message: #{message} from socket #{socket.object_id}"
 
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
@@ -237,11 +255,13 @@ module Lattice::Connected
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
-          REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+          # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+          register_session(session_id.as(String), socket) if session_id
           target.subscribe(socket, session_id.as(String | Nil))
         else
           session_id = payload["session_id"]?
-            target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
+          target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
+          target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end
 
@@ -250,6 +270,7 @@ module Lattice::Connected
     # when a socket is closed we have to remove it from all of the subscriptions it took 
     # part in as well as from registered sessions.
     def self.on_close(socket)
+      log :process, "Closing socket #{socket.object_id}"
       WebObject::INSTANCES.values.each &.unsubscribe(socket)
       REGISTERED_SESSIONS.delete socket.object_id
     end
