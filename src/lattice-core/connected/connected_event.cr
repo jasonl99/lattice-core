@@ -1,6 +1,7 @@
+require "./web_object"
 module Lattice
   module Connected
-    class ConnectedEvent
+    abstract class ConnectedEvent
       property sender : Lattice::Connected::WebObject
       property dom_item : String
       property action : Lattice::Connected::IncomingMessage | Lattice::Connected::OutgoingMessage
