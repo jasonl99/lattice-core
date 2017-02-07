@@ -103,9 +103,6 @@ module Lattice::Connected
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
       return_val = JSON.parse(message)
       payload = return_val.as_h
-      # payload must be a valid ConnectedMessage.
-      puts "payload class: #{payload.class}".colorize(:white).on(:blue)
-      puts "as(IncomingMessage) : #{payload.as(IncomingMessage).class}".colorize(:white).on(:dark_gray)
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
@@ -242,7 +239,6 @@ module Lattice::Connected
       Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
     end
 
-    # OPTIMIZE possibly use ConnectedMessage for both `#subsriber_action` and `#observer`.
     def self.on_message(message, socket)
 
       payload = validate_payload(message, socket)
@@ -262,7 +258,7 @@ module Lattice::Connected
           # FIXME this can now just be a simple call (on_event) in target
           session_id = payload["session_id"]?
           target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
+          target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket, direction: "In"
           #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end

@@ -12,8 +12,6 @@ module Lattice
       class_getter instances
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
-      @version = 0
-      property version
       property subscribers # Each instance has its own subcribers.
       getter observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
@@ -52,35 +50,33 @@ module Lattice
         end
       end
 
+      # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
       # send a message to given sockets
-      def send(msg : OutgoingMessage, sockets : Array(HTTP::WebSocket))
+      def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
+          notify_observers msg.first_key, msg, WebSocket::REGISTERED_SESSIONS[socket.object_id]?, socket, direction: "Out"
           socket.send msg.to_json
         end
       end
 
-      def update_attribute( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
-        self.version +=1
-        msg = { "dom"=>change.merge({"action"=>"update_attribute", "version"=>version}) }
+      def update_attribute( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"update_attribute"}) }
         send msg, subscribers
       end
 
-      def update( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers )
-        self.version +=1
-        msg = { "dom"=>change.merge({"action"=>"update", "version"=>version}) }
+      def update( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"update"}) }
         send msg, subscribers
       end
 
-      def act( action : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
+      def act( action , subscribers : Array(HTTP::WebSocket) = self.subscribers  )
         msg = {"act" => action}
         send msg, subscribers
       end
 
-      def insert( change : OutgoingMessage, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
-        self.version +=1
-        msg = { "dom"=>change.merge({"action"=>"insert", "version"=>version}) }
-        puts "subscriber count: #{subscribers.size}".colorize(:red) if subscribers.size == 0
+      def insert( change, subscribers : Array(HTTP::WebSocket) = self.subscribers  )
+        msg = { "dom"=>change.merge({"action"=>"insert"}) }
         send msg, subscribers
       end
 
@@ -109,9 +105,9 @@ module Lattice
       end
 
       # target.notify_observers target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
-      def notify_observers( dom_item, params, session_id, socket)
+      def notify_observers( dom_item, action : ConnectedMessage, session_id, socket, direction = "out")
         observers.each do |observer|
-          observer.as(EventObserver).observe talker: self, dom_item: dom_item, action: params, session_id: session_id, socket: socket
+          observer.as(EventObserver).observe talker: self, dom_item: dom_item, action: action, session_id: session_id, socket: socket, direction: direction
         end
       end
 
@@ -189,14 +185,7 @@ module Lattice
         # the classname-signature as a dom_id.  The signature is something that is sufficiently
         # random that we can quickly determine if an object is "real".
         if (obj = from_signature(signature))
-          puts "--- match, class is  #{obj.class.to_s.split("::").last}"
           return obj if obj.class.to_s.split("::").last == klass
-        else
-          puts "----------------------------"
-          puts "NO MATCH"
-          puts obj
-          puts dom
-          puts "-----------------------------"
         end
       end
 

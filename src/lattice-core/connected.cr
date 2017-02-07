@@ -1,10 +1,9 @@
 require "./connected/*"
 module Lattice
   module Connected
-    alias OutgoingMessage = Hash( String, String | Int32 | Hash(String, String | Int32) )
-    alias IncomingMessage= Hash(String, JSON::Type)
+    alias ConnectedMessage = Hash( String, JSON::Type )
     SOCKET_LOGGER = Logger.new(File.open("./connected.log","a"))
-    SOCKET_LOGGER.level = Logger::DEBUG
+    SOCKET_LOGGER.level = Logger::WARN
     SOCKET_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|
       # io << severity[0] << ", [" << datetime << " #" << Process.pid << "] "
       # io << severity.rjust(5) << " -- " << progname << ": " << message
