@@ -4,10 +4,12 @@ module Lattice
     abstract class ConnectedEvent
       property sender : Lattice::Connected::WebObject
       property dom_item : String
-      property action : Lattice::Connected::IncomingMessage | Lattice::Connected::OutgoingMessage
+      property action : ConnectedMessage | Hash(String,Hash(String,String))
       property session_id : String?
       property socket : HTTP::WebSocket
-      def initialize(@sender, @dom_item, @action, @session_id, @socket)
+      property direction : String
+      property event_time = Time.now
+      def initialize(@sender, @dom_item, @action, @session_id, @socket, @direction)
       end
     end
   end
