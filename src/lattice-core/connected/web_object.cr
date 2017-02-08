@@ -11,7 +11,9 @@ module Lattice
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
       class_getter instances
       @subscribers = [] of HTTP::WebSocket
+      @children = {} of String=>WebObject
       @observers = [] of self
+      property creator : WebObject?
       property subscribers # Each instance has its own subcribers.
       getter observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
@@ -19,8 +21,26 @@ module Lattice
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       # def initialize(@name : String, observer : EventObserver? = nil)
-      def initialize(@name : String)
+      def initialize(@name : String, @creator : WebObject? = nil)
         self.class.add_instance self
+      end
+
+      def self.child_of(creator : WebObject)
+        obj = new(name: creator.dom_id)
+        obj.creator = creator
+        obj
+      end
+
+      def add_child( name, child : WebObject)
+        @children[name] = child
+      end
+
+      def dom_prefix : String
+        # if @creator
+        #   "#{@creator.as(WebObject).dom_id}-"
+        # else
+          ""
+#        end
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
@@ -36,6 +56,9 @@ module Lattice
       end
 
       def content
+      end
+
+      def get_data  # added for GlobalStats
       end
 
       # useful for logging, etc
@@ -167,8 +190,12 @@ module Lattice
       # end
 
       # a publicly-consumable id that can be used to find the object in ##from_dom_id
-      def dom_id
-        @dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
+      def dom_id : String
+        @dom_id ||= "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
+        # @dom_id ||= "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
+        # puts @dom_id
+        # @dom_id
+        "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
       end
 
       # come up with a signature that is unique to an instantiated object.
