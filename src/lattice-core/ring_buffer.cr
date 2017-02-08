@@ -1,8 +1,10 @@
 module Lattice
   class RingBuffer(T)
     property current_index = -1
+    property size : Int32 = 10
 
-    def initialize(@size = 10)
+    def initialize(size = nil)
+      @size = size if size
       @storage = Array(T | Nil).new(@size,nil)
     end
 

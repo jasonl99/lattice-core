@@ -17,12 +17,17 @@ module Lattice
       property subscribers # Each instance has its own subcribers.
       getter observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
+      property children
 
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       # def initialize(@name : String, observer : EventObserver? = nil)
       def initialize(@name : String, @creator : WebObject? = nil)
         self.class.add_instance self
+        after_initialize
+      end
+
+      def after_initialize
       end
 
       def self.child_of(creator : WebObject)
@@ -33,14 +38,6 @@ module Lattice
 
       def add_child( name, child : WebObject)
         @children[name] = child
-      end
-
-      def dom_prefix : String
-        # if @creator
-        #   "#{@creator.as(WebObject).dom_id}-"
-        # else
-          ""
-#        end
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
@@ -174,7 +171,7 @@ module Lattice
         else
           target = new(name)
         end
-        return { javascript(session_id,target), target }
+        return { javascript(session_id,target), target.as(self) }
       end
 
       def self.js_var
@@ -191,11 +188,8 @@ module Lattice
 
       # a publicly-consumable id that can be used to find the object in ##from_dom_id
       def dom_id : String
-        @dom_id ||= "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
-        # @dom_id ||= "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
-        # puts @dom_id
-        # @dom_id
-        "#{dom_prefix}#{self.class.to_s.split("::").last}-#{signature}"
+        #@dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
+        "#{self.class.to_s.split("::").last}-#{signature}"
       end
 
       # come up with a signature that is unique to an instantiated object.

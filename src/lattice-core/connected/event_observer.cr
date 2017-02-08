@@ -4,7 +4,7 @@ module Lattice
   module Connected
     abstract class EventObserver(T) < WebObject
       @max_events = 25
-      @@event_class = DefaultEvent
+      # @@event_class = DefaultEvent
 
       def initialize(@name)
         @events = RingBuffer(T).new(size: @max_events)
