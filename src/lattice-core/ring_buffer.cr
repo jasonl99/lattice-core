@@ -3,8 +3,12 @@ module Lattice
     property current_index = -1
     property size : Int32 = 10
 
-    def initialize(size = nil)
-      @size = size if size
+    def initialize(size : Int32 = nil)
+      if size
+        @size = size.as(Int32)
+      else
+        @size = 25
+      end
       @storage = Array(T | Nil).new(@size,nil)
     end
 

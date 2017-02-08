@@ -13,6 +13,7 @@ module Lattice
       @subscribers = [] of HTTP::WebSocket
       @children = {} of String=>WebObject
       @observers = [] of self
+      property version = Int64.new(0)
       property creator : WebObject?
       property subscribers # Each instance has its own subcribers.
       getter observers   # we talk to objects who want to listen by sending a listen_to messsage
@@ -30,14 +31,23 @@ module Lattice
       def after_initialize
       end
 
-      def self.child_of(creator : WebObject)
-        obj = new(name: creator.dom_id)
-        obj.creator = creator
-        obj
+
+      def simple_class
+        self.class.simple_class
+      end
+
+      def self.simple_class
+        self.to_s.to_s.split("::").last
       end
 
       def add_child( name, child : WebObject)
         @children[name] = child
+      end
+
+      def self.child_of(creator : WebObject, dom_id)
+        obj = new(name: "#{creator.dom_id}-#{dom_id}")
+        obj.creator = creator
+        obj
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
@@ -127,7 +137,7 @@ module Lattice
       # target.notify_observers target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
       def notify_observers( dom_item, action : ConnectedMessage, session_id, socket, direction = "out")
         observers.each do |observer|
-          observer.as(EventObserver).observe talker: self, dom_item: dom_item, action: action, session_id: session_id, socket: socket, direction: direction
+          observer.observe talker: self, dom_item: dom_item, action: action, session_id: session_id, socket: socket, direction: direction
         end
       end
 
@@ -189,7 +199,7 @@ module Lattice
       # a publicly-consumable id that can be used to find the object in ##from_dom_id
       def dom_id : String
         #@dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
-        "#{self.class.to_s.split("::").last}-#{signature}"
+        "#{simple_class}-#{signature}"
       end
 
       # come up with a signature that is unique to an instantiated object.
@@ -208,6 +218,10 @@ module Lattice
         if (obj = from_signature(signature))
           return obj if obj.class.to_s.split("::").last == klass
         end
+      end
+
+      def self.from_dom_id!(dom : String) : self
+        from_dom_id(dom).as(self)
       end
 
       def self.from_signature( signature : String)
