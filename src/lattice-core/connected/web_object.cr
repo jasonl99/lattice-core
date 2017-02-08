@@ -20,6 +20,7 @@ module Lattice
       property name : String
       property children
 
+
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       # def initialize(@name : String, observer : EventObserver? = nil)
@@ -139,6 +140,19 @@ module Lattice
         observers.each do |observer|
           observer.observe talker: self, dom_item: dom_item, action: action, session_id: session_id, socket: socket, direction: direction
         end
+      end
+
+      # an on_event fires in the observer
+      def on_event(event : ConnectedEvent)
+        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s}"
+      end
+
+      # observe fires in the observer.  The data is wrapped into a ConnectedMessage
+      # and on_event fired
+      def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
+        event = DefaultEvent.new( talker, dom_item, action, session_id, socket, direction)
+        # @events << event
+        on_event event
       end
 
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
