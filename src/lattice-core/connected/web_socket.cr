@@ -257,8 +257,19 @@ module Lattice::Connected
         else
           # FIXME this can now just be a simple call (on_event) in target
           session_id = payload["session_id"]?
+          #OPTIMIZE: what if by default an item subscribed to its own events, so it comes in on_event
           target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket, direction: "In"
+          # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket, direction: "In"
+          target.emit_event DefaultEvent.new(
+            event_type: "subscriber",
+            sender: target,
+            dom_item: payload["dom_item"].as(String),
+            action: params,
+            session_id: session_id.as(String|Nil),
+            socket: socket,
+            direction: "In")
+
+
           #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end

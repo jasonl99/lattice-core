@@ -2,24 +2,22 @@ require "./web_object"
 require "./connected_event"
 module Lattice
   module Connected
-    abstract class EventObserver(T) < WebObject
-      @max_events = 25
-      @@event_class = DefaultEvent
+    class EventObserver
 
-      def initialize(@name)
-        @events = RingBuffer(T).new(size: @max_events)
-        super
+      # Relay the event to the EventObserver class (broadcast)
+      # Relay the event to the sender's class (mediumcast)
+      # Relay teh event to the listners (narrowcast)
+      def on_event(event : ConnectedEvent, sender)
+        sender.class.on_event event, sender      # Only to sender's class
+        self.class.on_event event, sender        # To observer class
+        sender.observers.each do |observer|
+          observer.on_event event, sender        #To individual observers
+        end
       end
 
-      def on_event(event : ConnectedEvent)
-        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s}"
+      def self.on_event(event, sender)
       end
 
-      def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
-        event = T.new( talker, dom_item, action, session_id, socket, direction)
-        @events << event
-        on_event event
-      end
 
     end
   end
