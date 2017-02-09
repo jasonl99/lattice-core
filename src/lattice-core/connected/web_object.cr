@@ -6,10 +6,12 @@ module Lattice
     abstract class WebObject
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       SIGNATURE_SIZE = 8 # the number of SHA256 digits to include in the instance signature
-      @signature : String?
       INSTANCES = Hash(String, self).new      # all instance, with key as signature
+      @signature : String?
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
+      @@observer = EventObserver.new
       class_getter instances
+
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
       property index = 0 # used when this object is a member of Container(T) subclass
@@ -22,7 +24,6 @@ module Lattice
 
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
-      # def initialize(@name : String, observer : EventObserver? = nil)
       def initialize(@name : String, @creator : WebObject? = nil)
         self.class.add_instance self
         after_initialize
@@ -81,13 +82,21 @@ module Lattice
         end
       end
 
-      # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        "Sending msg"
+        emit_event DefaultEvent.new(
+          event_type: "message",
+          sender: self,
+          dom_item: dom_id,
+          action: msg,
+          session_id: nil,
+          socket: nil,
+          direction: "Out"
+        )
+
+
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
-          notify_observers msg.first_key, msg, WebSocket::REGISTERED_SESSIONS[socket.object_id]?, socket, direction: "Out"
           socket.send msg.to_json
         end
       end
@@ -136,26 +145,22 @@ module Lattice
         @observers << observer unless @observers.includes? observer
       end
 
-      # target.notify_observers target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
-      def notify_observers( dom_item, action : ConnectedMessage, session_id, socket, direction = "out")
-        observers.each do |observer|
-          observer.observe talker: self, dom_item: dom_item, action: action, session_id: session_id, socket: socket, direction: direction
-        end
-      end
-
+      # the entry point for creating events.  The @observer
+      # handles sending them to various endpoints
       def emit_event(event : ConnectedEvent)
-        observers.each do |observer|
-          observer.on_event event, self
-        end
+        @@observer.on_event(event, self)
       end
 
-      # an on_event fires in the observer
+      # Fires when an event occurs on any instance of this class.
+      def self.on_event(event : ConnectedEvent, speaker : WebObject)
+      end
+
+      # an on_event fires here, in the observing instance
       def on_event(event : ConnectedEvent, speaker : WebObject)
         puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
       end
 
-      # observe fires in the observer.  The data is wrapped into a ConnectedMessage
-      # and on_event fired
+      # observe fires in the observer.  The data is wrapped into a ConnectedMessage and on_event fired
       def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
         event = DefaultEvent.new( talker, dom_item, action, session_id, socket, direction)
         # @events << event
@@ -287,15 +292,6 @@ module Lattice
         connectEvents(#{js_var});
 
         JS
-        #          function(el){return el.id})   }}
-        # old js:
-        # //          evt.target.send( JSON.stringify( 
-        # //            {"subscribe":{sessionID: "#{session_id}",
-        # //             ids:  [].map.call(document
-        # //              .querySelectorAll("[data-version]"),
-        # //               function(el){return el.getAttribute("data-item")})   }}
-        # //             ));
-
       end
 
       def self.subclasses
