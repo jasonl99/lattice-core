@@ -21,6 +21,7 @@ module Lattice
         #TODO is data-order update desirable?
         #update_attribute({"id"=>content.dom_id, "attribute"=>"data-order","value"=>"-next_index}")
         update_attribute({"id"=>content.dom_id, "attribute"=>"style","value"=>"order: #{-next_index}"})
+        update({"id"=>content.dom_id, "value"=>content.value})
       end
 
       def add_content(content, dom_id = self.dom_id)

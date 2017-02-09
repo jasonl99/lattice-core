@@ -12,6 +12,7 @@ module Lattice
       class_getter instances
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
+      property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
       property subscribers # Each instance has its own subcribers.
@@ -38,9 +39,11 @@ module Lattice
         self.to_s.to_s.split("::").last
       end
 
+      # get the index from the parent
       def self.child_of(creator : WebObject, name : String)
         obj = new(name: name )
         obj.creator = creator
+        obj.index = creator.as(Container).next_index
         obj
       end
 
