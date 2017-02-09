@@ -143,6 +143,12 @@ module Lattice
         end
       end
 
+      def emit_event(event : ConnectedEvent)
+        observers.each do |observer|
+          observer.on_event event, self
+        end
+      end
+
       # an on_event fires in the observer
       def on_event(event : ConnectedEvent, speaker : WebObject)
         puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
@@ -232,6 +238,12 @@ module Lattice
         # random that we can quickly determine if an object is "real".
         if (obj = from_signature(signature))
           return obj if obj.class.to_s.split("::").last == klass
+        end
+      end
+
+      def self.find(name)
+        if (signature = instances[name]?)
+          INSTANCES[signature]
         end
       end
 
