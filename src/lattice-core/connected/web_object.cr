@@ -11,14 +11,12 @@ module Lattice
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
       class_getter instances
       @subscribers = [] of HTTP::WebSocket
-      @children = {} of String=>WebObject
       @observers = [] of self
       property version = Int64.new(0)
       property creator : WebObject?
       property subscribers # Each instance has its own subcribers.
       getter observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
-      property children
 
 
       # a new thing must have a name, and that name must be unique so we can
@@ -32,7 +30,6 @@ module Lattice
       def after_initialize
       end
 
-
       def simple_class
         self.class.simple_class
       end
@@ -41,14 +38,14 @@ module Lattice
         self.to_s.to_s.split("::").last
       end
 
-      def add_child( name, child : WebObject)
-        @children[name] = child
-      end
-
-      def self.child_of(creator : WebObject, dom_id)
-        obj = new(name: "#{creator.dom_id}-#{dom_id}")
+      def self.child_of(creator : WebObject, name : String)
+        obj = new(name: name )
         obj.creator = creator
         obj
+      end
+
+      def self.instance(dom_id : String)
+        INSTANCES[dom_id]?
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
@@ -84,6 +81,7 @@ module Lattice
       # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
+        "Sending msg"
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
           notify_observers msg.first_key, msg, WebSocket::REGISTERED_SESSIONS[socket.object_id]?, socket, direction: "Out"
@@ -143,8 +141,8 @@ module Lattice
       end
 
       # an on_event fires in the observer
-      def on_event(event : ConnectedEvent)
-        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s}"
+      def on_event(event : ConnectedEvent, speaker : WebObject)
+        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
       end
 
       # observe fires in the observer.  The data is wrapped into a ConnectedMessage
@@ -152,7 +150,7 @@ module Lattice
       def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
         event = DefaultEvent.new( talker, dom_item, action, session_id, socket, direction)
         # @events << event
-        on_event event
+        on_event event, self
       end
 
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
