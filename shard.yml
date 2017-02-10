@@ -4,6 +4,7 @@ version: 0.11.0
 dependencies:
   slang:
     github: jeromegn/slang
+    branch: master
   kemal:
     github: kemalcr/kemal
   kemal-session:

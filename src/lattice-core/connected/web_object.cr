@@ -88,7 +88,7 @@ module Lattice
           event_type: "message",
           sender: self,
           dom_item: dom_id,
-          action: msg,
+          message: msg,
           session_id: nil,
           socket: nil,
           direction: "Out"
@@ -250,6 +250,10 @@ module Lattice
         if (signature = instances[name]?)
           INSTANCES[signature]
         end
+      end
+
+      def self.find_or_create(name)
+        find(name) || new(name)
       end
 
       def self.from_dom_id!(dom : String) : self
