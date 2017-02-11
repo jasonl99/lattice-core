@@ -17,10 +17,11 @@ module Lattice
 
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
+      @components = {} of String=>String
       property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
-      property subscribers # Each instance has its own subcribers.
+      property subscribers # Each {} of String=>String
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
 
@@ -104,6 +105,16 @@ module Lattice
         end
       end
 
+      def update_component( component : String, value : _ )
+        if !@components[component]? || @components[component] != value.to_s
+          @components[component] = value.to_s
+          puts "update_component #{component} to #{value}"
+          update({"id"=>dom_id(component), "value"=>value.to_s})
+        end
+      end
+
+      #-----------------------------------------------------------------------------------------
+      # these go out to the sockets
       def update_attribute( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
         msg = { "dom"=>change.merge({"action"=>"update_attribute"}) }
         send msg, subscribers
@@ -123,6 +134,7 @@ module Lattice
         msg = { "dom"=>change.merge({"action"=>"insert"}) }
         send msg, subscribers
       end
+      #-----------------------------------------------------------------------------------------
 
       # Converts a dom-style id and extracts that last number from it
       # for example, "card-3" returns 3.
@@ -219,17 +231,30 @@ module Lattice
         "connected_object"
       end
 
-      # # The dom id .i.e <div id="abc"> for this object.  When later parsing this value
-      # # the system will look for the largest valued number in the dom_id, so it is ok
-      # # to use values like "clock24-11929238" which would return 11929238.
-      # def dom_id
-      #   "#{self.class.to_s.split("::").last.downcase}-#{object_id}"
-      # end
-
       # a publicly-consumable id that can be used to find the object in ##from_dom_id
-      def dom_id : String
-        #@dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
-        "#{simple_class}-#{signature}"
+      def dom_id( component : String? = nil ) : String
+        if component
+          @components[component] = "" unless @components[component]?
+          component = "-#{component}"
+        end
+        "#{simple_class}-#{signature}#{component}"
+      end
+
+      # given a full dom_id that contains this object, this strips
+      # the dom_id and returns just the component portion, which is
+      # the key for @components
+      # this assumes there is a "-" between the dom_id and the component
+      def component_id( val : String)
+        if val.starts_with?(dom_id) && val.size > dom_id.size + 1
+          val[dom_id.size+1..-1]
+        end
+      end
+
+      # a component_id can have a -number as an internal index
+      # within WebObject.
+      def component_index (val : String?)
+        return unless val # obviously there's no idx
+        val.split("-").last.to_i32?
       end
 
       # come up with a signature that is unique to an instantiated object.
