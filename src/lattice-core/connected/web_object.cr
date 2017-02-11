@@ -10,7 +10,10 @@ module Lattice
       @signature : String?
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
       @@observer = EventObserver.new
+      @@emitter = EventEmitter.new
       class_getter instances
+      class_getter observer
+      class_getter emitter
 
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
@@ -18,14 +21,14 @@ module Lattice
       property version = Int64.new(0)
       property creator : WebObject?
       property subscribers # Each instance has its own subcribers.
-      getter observers   # we talk to objects who want to listen by sending a listen_to messsage
+      property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
-
 
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
         self.class.add_instance self
+        # @observers << self
         after_initialize
       end
 
@@ -148,7 +151,7 @@ module Lattice
       # the entry point for creating events.  The @observer
       # handles sending them to various endpoints
       def emit_event(event : ConnectedEvent)
-        @@observer.on_event(event, self)
+        @@emitter.emit_event(event, self)
       end
 
       # Fires when an event occurs on any instance of this class.
