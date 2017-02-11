@@ -156,6 +156,7 @@ module Lattice
 
       # Fires when an event occurs on any instance of this class.
       def self.on_event(event : ConnectedEvent, speaker : WebObject)
+        puts "#{to_s} class event: #{event.event_type} #{event.direction} from #{speaker.name} for #{event.dom_item}".colorize(:blue).on(:light_gray)
       end
 
       # an on_event fires here, in the observing instance

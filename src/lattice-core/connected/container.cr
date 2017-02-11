@@ -1,7 +1,7 @@
 module Lattice
   module Connected
     abstract class Container(T) < WebObject
-      #@max_items : Int32 = 25
+      @max_items : Int32 = 25
       property max_items : Int32 = 25
       property items : RingBuffer(T)
       property next_index = 0
@@ -10,7 +10,7 @@ module Lattice
         @next_index += 1
       end
 
-      def initialize(@name, @creator : WebObject? = nil, @max_items = 25)
+      def initialize(@name, @creator : WebObject? = nil, max_items = @max_items)
       # def initialize(@name, @creator : webobject? = nil, max_items = 25)
         @items = RingBuffer(T).new(size: max_items)
         super(@name, @creator)
