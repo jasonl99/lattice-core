@@ -20,6 +20,10 @@ module Lattice
         @items.values.join
       end
 
+      # TODO send out dom modifications to change data-maxChildren
+      # so it doesn't have to be specified in the slang file.
+      # In new_content, the JSON message with id and value should have
+      # max_items included.
       def add_content(new_content)
         @items << new_content
         new_content

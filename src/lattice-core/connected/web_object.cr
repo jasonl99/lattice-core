@@ -9,8 +9,11 @@ module Lattice
       INSTANCES = Hash(String, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
-      @@observer = EventObserver.new
+      # @@observer = EventObserver.new
+      @@observers = [] of EventObserver | WebObject
+      @@observers << EventObserver.new
       @@emitter = EventEmitter.new
+      class_getter observers
       class_getter instances
       class_getter observer
       class_getter emitter
@@ -18,6 +21,7 @@ module Lattice
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
       @components = {} of String=>String
+      @content : String?  # used as default content; useful for external content updates data.
       property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
@@ -105,10 +109,16 @@ module Lattice
         end
       end
 
+      def update_content( content : String )
+        return if @content == content
+        @content = content
+        update({"id"=>dom_id, "value"=>content})
+      end
+
       def update_component( component : String, value : _ )
         if !@components[component]? || @components[component] != value.to_s
           @components[component] = value.to_s
-          puts "update_component #{component} to #{value}"
+          # puts "update_component #{component} to #{value}"
           update({"id"=>dom_id(component), "value"=>value.to_s})
         end
       end
@@ -143,21 +153,29 @@ module Lattice
         id if id && id <= max && id >= 0
       end
 
-      # A subscriber, with the _session_id_ given, has oassed in an action
-      # called from WebSocket#on_message
-      def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
-        if session_id
-          puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
-        else
-          puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
-        end
-      end
+      # # A subscriber, with the _session_id_ given, has oassed in an action
+      # # called from WebSocket#on_message
+      # def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
+      #   if session_id
+      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
+      #   else
+      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
+      #   end
+      # end
 
       # if you're a really popular object, other objects want to hear what you have to say.  This
       # gives those object a change to register their interest.  Any observer gets a notification
       # when an event occurs on a listened-to object
       def add_observer( observer : WebObject)
         @observers << observer unless @observers.includes? observer
+      end
+
+      # a class observer is a little different, it just listens to events but has
+      # no rendering capability of its own.  It would be a composite object that
+      # would handle this (in other words, an observer would have a @something WebObject
+      # to display what is observed
+      def self.add_observer( observer : EventObserver | WebObject )
+        @@observers << observer
       end
 
       # the entry point for creating events.  The @observer
@@ -168,12 +186,12 @@ module Lattice
 
       # Fires when an event occurs on any instance of this class.
       def self.on_event(event : ConnectedEvent, speaker : WebObject)
-        puts "#{to_s} class event: #{event.event_type} #{event.direction} from #{speaker.name} for #{event.dom_item}".colorize(:blue).on(:light_gray)
+        # puts "#{to_s} class event: #{event.event_type} #{event.direction} from #{speaker.name} for #{event.dom_item}".colorize(:blue).on(:light_gray)
       end
 
       # an on_event fires here, in the observing instance
       def on_event(event : ConnectedEvent, speaker : WebObject)
-        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
+      #  puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
       end
 
       # observe fires in the observer.  The data is wrapped into a ConnectedMessage and on_event fired
@@ -206,6 +224,7 @@ module Lattice
       end
 
       # delete a subscription for _socket_
+      #TODO create an event for unsubscribe?
       def unsubscribe( socket : HTTP::WebSocket)
         subscribers.delete(socket)
         unsubscribed socket

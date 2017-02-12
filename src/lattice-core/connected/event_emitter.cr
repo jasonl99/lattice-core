@@ -5,14 +5,11 @@ module Lattice
     class EventEmitter
 
       def emit_event(event, sender)
-        puts "EventEmmiter: emit_event requested by #{sender.name} for #{event.dom_item}"
-        event.sender.on_event event, sender if sender != event.sender
-        event.sender.class.observer.on_event event, sender  # observer handles relaying
-        # sender.class.on_event event, sender      # Only to sender's class
-        # self.class.on_event event, sender        # To observer class
-        # sender.observers.each do |observer|
-        #   observer.on_event event, sender unless observer == sender  
-        # end
+        # puts "EventEmmiter: emit_event #{event.event_type} requested by #{sender.name} for #{event.dom_item} regarding #{event.sender.name}"
+        # puts "#{event.message}" if event.dom_item
+        event.sender.on_event event, sender  if event.direction == "In"
+        event.sender.class.observers.each &.on_event(event, sender)  # observer handles relaying
+        event.sender.observers.each &.on_event(event, sender)  # observer handles relaying
       end
 
       def self.on_event(event, sender)

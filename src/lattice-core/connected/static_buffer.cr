@@ -10,7 +10,7 @@ module Lattice
         @items << new_content
         insert({"id"=>dom_id, "value"=>new_content})
       end
-      def content
+      def item_content
         @items.values.join
       end
     end
