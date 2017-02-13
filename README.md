@@ -50,11 +50,15 @@ But the goal is to have a real, useful, fast framework to develop truly immersiv
 
 # Show Me An Example
 
-Ok, take a look at [card_game](https://github.com/jasonl99/card_game).  It is designed
-to illustrate the power of WebSockets in general, and this framework in particular.  You
-can clone it, update the shards, and run it in a few lines.
+Ok, take a look at [card_game](https://github.com/jasonl99/card_game).  It is designedto illustrate the power of WebSockets in general, and this framework in particular.  You can clone it, update the shards, and run it in a few lines.
 
-I'd also suggest you take a look at the [Lattice::Connected API](https://github.com/jasonl99/lattice-core/wiki/Lattice_Connected-API) wiki page.  It attempts to illustrate the concepts in a conversational manner, as if we're sitting around talking about it.
+I'd also suggest you take a look at the [Lattice::Connected API](https://github.com/jasonl99/lattice-core/wiki/Lattice_Connected-API) wiki page.  It attempts to illustrate the concepts in a conversational manner, as if we're sitting around talking about it.  But it's also wildly changing still.
+
+There's two new demo apps:  
+
+[calculator](https://github.com/jasonl99/calculator) - A shareable calculator (everyone can punch buttons).
+
+[md-live](https://github.com/jasonl99/md_live) - A demo that shows markdown rendered in real time as you type.  And this can also be shared (collaborate on a doc).  It's a demo, so don't expect to be able do much with it, but it illustrates the idea.  It uses crystal's markdown library for rendering.
 
 ## Installation
 
