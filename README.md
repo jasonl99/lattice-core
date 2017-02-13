@@ -10,44 +10,24 @@ two objects:  one on the server (an instantiated object of some kind), and in th
 maintain state between them.
 
 That's challenging enough on its own.  The server is an abstract representation, while the browser is a particular
-visual representation of a subset of the server.  Adding to the complexity is the fact that http is
-inherently stateless, and now every update needs a whole setup and teardown process as
-the browser creates a new request, the server creates a new response. Add the subsequent teardown, and you're looking 
-at a _ton_ of work to update an element on a page.
+visual representation of a subset of the object on the server.  Adding to the complexity is the fact that http is
+inherently stateless, and now every update needs a whole setup and teardown process as the browser creates a new request, and the server creates a new response. Add the subsequent teardown, and you're looking at a _ton_ of work to update an element on a page.
 
-The axiomatic way to do this has been use some javascript libarary that ulimately performs these
-updates over AJAX.  The updates still happen in a stateless manner -- it's just that a lot of the 
-complexity and overhead is invisibly buried and discarded by the javascript that performs the ajax.
-But make no mistake browser and the server still work _a lot_ to update a little element on your
-page.  The analogy that occurs to me is an order from Amazon arriving in a big box,
-with plastic bubble wrap and wads of paper keeping the item from sliding around.  It might be
-a book, but the effort to get that book from Amazon (the server) to you (the browser) is an awful lot of work.
-There's a lot of waste along the way.  
+The axiomatic way to do this has been use some javascript libarary that ulimately performs these updates over AJAX.  The updates still happen in a stateless manner -- it's just that a lot of the  complexity and overhead is invisibly buried and discarded by the javascript that performs the ajax. But make no mistake browser and the server still work _a lot_ to update a little element on you page.   
 
-Enter [WebSockets](https://www.websocket.org/quantum.html).  They are relatively new, part of the HTML5 
-spec.  They won't work on all browsers, but according to [this page](http://caniuse.com/#feat=websockets)
-they are usable by more than 90% of current users.  That's not bad.  Just be clear, there is no intention of 
+Enter [WebSockets](https://www.websocket.org/quantum.html).  They are relatively new, part of the HTML5 spec.  They won't work on all browsers, but according to [this page](http://caniuse.com/#feat=websockets) they are usable by more than 90% of current users.  That's not bad.  Just be clear, there is no intention of 
 making this framework work without WebSockets, which means it also requires javascript.   Some people turn off
-javascript.  This framework won't work for them either.  Think of it as a platform-specific framework:  
-Instead of Android or iOS,  it's the "socket-ready browser" platform.  I think a platform that supports
-90%_+ of users is a pretty good target.
+javascript.  This framework won't work for them either.  Think of it as a platform-specific framework:  Instead of Android or iOS,  it's the "socket-ready browser" platform.  I think a platform that supports 90%+ of users is a pretty good target.
 
 ## Yeah, but, _Require_ websockets?  Why be so limiting?
 
-I've been programming for a long time.  I've experimented with different frameworks, and I've
-played around many times with the newest "language of the month."  It's incredibly overwhelming
-to be faced with a new language that can do something a litle better, or that promises some
-big advantage of last month's favorite.  The bottom line is there are a ton of 
-frameworks out there already that do far more than I could ever hope to accomplish in a more traditional
-way.  The irony is also not lost on me -- Crystal itself is a pretty new language, and you could probably
-make a convincing argument that I'm just using another language of the month.
+I've been programming for a long time.  I've experimented with different frameworks, and I've played around many times with the newest "language of the month."  It's incredibly overwhelming to be faced with a new language that can do something a litle better, or that promises some big advantage of last month's favorite.   And just "trying out" a new language does not give you enough time to learn the nuances that are important to efficient programming.
 
-But something happened for me as I started experimenting with Crystal.  I can't (and won't) 
-make any promises that you'll feel the same way.  Crystal's standard http library includes a 
-nice implementation of WebSockets that's augmented by kemal.  Up until a few months ago, 
-I thought WebSockets were something you used if you wanted to include video steamoing on your 
-web page.  Never once had I written javascript to open a websocket.  But kemal has an intriguing [chat demo](https://github.com/sdogruyol/kemal-chat) that struck me with its simplicity.  So I dug.  I'll freely admit 
-I became a little obsessed.
+There are ton of mature  frameworks out there already that do far more than I could ever hope to accomplish with a more traditional way http- or ajax-first approach.  This frameworks tries to be something completely different, in a completely different way.  
+
+The irony is also not lost on me -- Crystal itself is a pretty new language, and you could probably make a convincing argument that I'm just using another language of the month.
+
+But something happened for me as I started experimenting with Crystal.  I can't (and won't) make any promises that you'll feel the same way.  Crystal's standard http library includes a nice implementation of WebSockets that's augmented by kemal.  Up until a few months ago,  I thought WebSockets were something you used if you wanted to include video streaming on your web page.  Never once had I written javascript to open a websocket.  But kemal has an intriguing [chat demo](https://github.com/sdogruyol/kemal-chat) that struck me with its elegant simplicity.  So I dug.  I'll freely admit  I became a little obsessed.
 
 Crystal has a beautiful syntax.  It's very much like Ruby, but it's compiled, so it's fast.  It's strongly-typed, but it does so without getting in your way.  I can't help think that Crystal has done for typing what ruby did for syntax.
 
@@ -56,21 +36,17 @@ apps that have eliminate nearly all of the overhead and complexity that comes wi
 has an awe-inspiring "the world is my oyster" power that I've experienced only a few times as a 
 programmer (off the top of my head, it occurred with Visual FoxPro for Windows and Ruby.  And of course now Crystal).
 
-In fact, your entire mindset changes - you stop thinking in terms of routing to 
-pages that render a view, and start thinking in terms of events.  Elements on a page
-are wired directly from each end user to the object on the server and vice-versa.  A button click can instantly 
-change server state, and those changes can instantly go to everyone viewing at that object.
+In fact, your entire mindset changes - you stop thinking in terms of routing to pages that render a view, and start thinking in terms of events.  Elements on a page are wired directly from each end user to the object on the server and vice-versa.  A button click can instantly change server state, and those changes can instantly go to everyone viewing at that object.
 
 ## Is This Thing Ready To Use For Anything?
 
 Yes, it's ready for experimentation, but that's about it.
 
-I also want to make clear that I'm not someone with a traditional programming pedigree - I don't have any sort of computer science degree, and I really shudder at the thought of having to deal with the traditional language that comes with that territory (UML diagrams and design patterns make me want to get back coding).   But I've been doing this sort of thing for a pretty long time (I used an EPROM programmer to change my `Apple ][` into a `Jason ][`).  I've been playing around with Crystal for just a couple of months.  So please, if you see something that seems like a rookie mistake, be gentle.  
+I also want to make clear that I'm not someone with a traditional programming pedigree - I don't have any sort of computer science degree, and I really shudder at the thought of having to deal with the traditional language that comes with that territory (UML diagrams and design patterns make me want to get back burying my head in neovim).   But I've been doing this sort of thing for a pretty long time (I used an EPROM programmer to change my `Apple ][` into a `Jason ][`).  But I've only been playing around with Crystal for just a couple of months.  So please, if you see something that seems like a rookie mistake, be gentle.  
 
-The API is not stable yet.  There's no databse integration, no user management.
+The API is not stable yet.  There's no databse integration, no user management.  Yet.
 
-But the goal is to have a real, useful, fast framework to develop truly immersive websites 
-that are a joy to use and fun to code.
+But the goal is to have a real, useful, fast framework to develop truly immersive websites that are a joy to use and fun to code.
 
 # Show Me An Example
 

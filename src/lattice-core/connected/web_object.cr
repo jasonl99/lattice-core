@@ -135,6 +135,16 @@ module Lattice
         send msg, subscribers
       end
 
+      def append_value( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"append_value"}) }
+        send msg, subscribers
+      end
+
+      def value( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"value"}) }
+        send msg, subscribers
+      end
+
       def act( action , subscribers : Array(HTTP::WebSocket) = self.subscribers  )
         msg = {"act" => action}
         send msg, subscribers
@@ -284,17 +294,20 @@ module Lattice
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
       def self.from_dom_id( dom : String)
-        klass, signature = dom.split("-").first(2)
-        # for objects that stay instantiated on the server (objects that are being used
-        # by multiple people or that require frequent updates) the default is to use
-        # the classname-signature as a dom_id.  The signature is something that is sufficiently
-        # random that we can quickly determine if an object is "real".
-        if (obj = from_signature(signature))
-          return obj if obj.class.to_s.split("::").last == klass
+        if (split = dom.split("-") ).size >= 2
+          klass, signature = dom.split("-").first(2)
+          # for objects that stay instantiated on the server (objects that are being used
+          # by multiple people or that require frequent updates) the default is to use
+          # the classname-signature as a dom_id.  The signature is something that is sufficiently
+          # random that we can quickly determine if an object is "real".
+          if (obj = from_signature(signature))
+            return obj if obj.class.to_s.split("::").last == klass
+          end
         end
       end
 
       def self.find(name)
+        puts "looking for #{name}"
         if (signature = instances[name]?)
           INSTANCES[signature]
         end
