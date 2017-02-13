@@ -9,23 +9,31 @@ module Lattice
       INSTANCES = Hash(String, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
-      @@observer = EventObserver.new
+      # @@observer = EventObserver.new
+      @@observers = [] of EventObserver | WebObject
+      @@observers << EventObserver.new
+      @@emitter = EventEmitter.new
+      class_getter observers
       class_getter instances
+      class_getter observer
+      class_getter emitter
 
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
+      @components = {} of String=>String
+      @content : String?  # used as default content; useful for external content updates data.
       property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
-      property subscribers # Each instance has its own subcribers.
-      getter observers   # we talk to objects who want to listen by sending a listen_to messsage
+      property subscribers # Each {} of String=>String
+      property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
-
 
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
         self.class.add_instance self
+        # @observers << self
         after_initialize
       end
 
@@ -88,7 +96,7 @@ module Lattice
           event_type: "message",
           sender: self,
           dom_item: dom_id,
-          action: msg,
+          message: msg,
           session_id: nil,
           socket: nil,
           direction: "Out"
@@ -101,6 +109,22 @@ module Lattice
         end
       end
 
+      def update_content( content : String )
+        return if @content == content
+        @content = content
+        update({"id"=>dom_id, "value"=>content})
+      end
+
+      def update_component( component : String, value : _ )
+        if !@components[component]? || @components[component] != value.to_s
+          @components[component] = value.to_s
+          # puts "update_component #{component} to #{value}"
+          update({"id"=>dom_id(component), "value"=>value.to_s})
+        end
+      end
+
+      #-----------------------------------------------------------------------------------------
+      # these go out to the sockets
       def update_attribute( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
         msg = { "dom"=>change.merge({"action"=>"update_attribute"}) }
         send msg, subscribers
@@ -108,6 +132,16 @@ module Lattice
 
       def update( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
         msg = { "dom"=>change.merge({"action"=>"update"}) }
+        send msg, subscribers
+      end
+
+      def append_value( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"append_value"}) }
+        send msg, subscribers
+      end
+
+      def value( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        msg = { "dom"=>change.merge({"action"=>"value"}) }
         send msg, subscribers
       end
 
@@ -120,6 +154,7 @@ module Lattice
         msg = { "dom"=>change.merge({"action"=>"insert"}) }
         send msg, subscribers
       end
+      #-----------------------------------------------------------------------------------------
 
       # Converts a dom-style id and extracts that last number from it
       # for example, "card-3" returns 3.
@@ -128,15 +163,15 @@ module Lattice
         id if id && id <= max && id >= 0
       end
 
-      # A subscriber, with the _session_id_ given, has oassed in an action
-      # called from WebSocket#on_message
-      def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
-        if session_id
-          puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
-        else
-          puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
-        end
-      end
+      # # A subscriber, with the _session_id_ given, has oassed in an action
+      # # called from WebSocket#on_message
+      # def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
+      #   if session_id
+      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
+      #   else
+      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
+      #   end
+      # end
 
       # if you're a really popular object, other objects want to hear what you have to say.  This
       # gives those object a change to register their interest.  Any observer gets a notification
@@ -145,19 +180,28 @@ module Lattice
         @observers << observer unless @observers.includes? observer
       end
 
+      # a class observer is a little different, it just listens to events but has
+      # no rendering capability of its own.  It would be a composite object that
+      # would handle this (in other words, an observer would have a @something WebObject
+      # to display what is observed
+      def self.add_observer( observer : EventObserver | WebObject )
+        @@observers << observer
+      end
+
       # the entry point for creating events.  The @observer
       # handles sending them to various endpoints
       def emit_event(event : ConnectedEvent)
-        @@observer.on_event(event, self)
+        @@emitter.emit_event(event, self)
       end
 
       # Fires when an event occurs on any instance of this class.
       def self.on_event(event : ConnectedEvent, speaker : WebObject)
+        # puts "#{to_s} class event: #{event.event_type} #{event.direction} from #{speaker.name} for #{event.dom_item}".colorize(:blue).on(:light_gray)
       end
 
       # an on_event fires here, in the observing instance
       def on_event(event : ConnectedEvent, speaker : WebObject)
-        puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
+      #  puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
       end
 
       # observe fires in the observer.  The data is wrapped into a ConnectedMessage and on_event fired
@@ -190,6 +234,7 @@ module Lattice
       end
 
       # delete a subscription for _socket_
+      #TODO create an event for unsubscribe?
       def unsubscribe( socket : HTTP::WebSocket)
         subscribers.delete(socket)
         unsubscribed socket
@@ -215,17 +260,30 @@ module Lattice
         "connected_object"
       end
 
-      # # The dom id .i.e <div id="abc"> for this object.  When later parsing this value
-      # # the system will look for the largest valued number in the dom_id, so it is ok
-      # # to use values like "clock24-11929238" which would return 11929238.
-      # def dom_id
-      #   "#{self.class.to_s.split("::").last.downcase}-#{object_id}"
-      # end
-
       # a publicly-consumable id that can be used to find the object in ##from_dom_id
-      def dom_id : String
-        #@dom_id ||= "#{self.class.to_s.split("::").last}-#{signature}"
-        "#{simple_class}-#{signature}"
+      def dom_id( component : String? = nil ) : String
+        if component
+          @components[component] = "" unless @components[component]?
+          component = "-#{component}"
+        end
+        "#{simple_class}-#{signature}#{component}"
+      end
+
+      # given a full dom_id that contains this object, this strips
+      # the dom_id and returns just the component portion, which is
+      # the key for @components
+      # this assumes there is a "-" between the dom_id and the component
+      def component_id( val : String)
+        if val.starts_with?(dom_id) && val.size > dom_id.size + 1
+          val[dom_id.size+1..-1]
+        end
+      end
+
+      # a component_id can have a -number as an internal index
+      # within WebObject.
+      def component_index (val : String?)
+        return unless val # obviously there's no idx
+        val.split("-").last.to_i32?
       end
 
       # come up with a signature that is unique to an instantiated object.
@@ -236,20 +294,27 @@ module Lattice
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
       def self.from_dom_id( dom : String)
-        klass, signature = dom.split("-").first(2)
-        # for objects that stay instantiated on the server (objects that are being used
-        # by multiple people or that require frequent updates) the default is to use
-        # the classname-signature as a dom_id.  The signature is something that is sufficiently
-        # random that we can quickly determine if an object is "real".
-        if (obj = from_signature(signature))
-          return obj if obj.class.to_s.split("::").last == klass
+        if (split = dom.split("-") ).size >= 2
+          klass, signature = dom.split("-").first(2)
+          # for objects that stay instantiated on the server (objects that are being used
+          # by multiple people or that require frequent updates) the default is to use
+          # the classname-signature as a dom_id.  The signature is something that is sufficiently
+          # random that we can quickly determine if an object is "real".
+          if (obj = from_signature(signature))
+            return obj if obj.class.to_s.split("::").last == klass
+          end
         end
       end
 
       def self.find(name)
+        puts "looking for #{name}"
         if (signature = instances[name]?)
           INSTANCES[signature]
         end
+      end
+
+      def self.find_or_create(name)
+        find(name) || new(name)
       end
 
       def self.from_dom_id!(dom : String) : self

@@ -5,6 +5,7 @@ function sendEvent(msg,socket) {
 
 function baseEvent(evt,event_action, action_params = {}) {
   id = evt.target.getAttribute("data-item")
+  console.log(evt)
   msg = {}
   send_attribs = evt.target.getAttribute("data-event-attributes")
   if (!send_attribs) { send_attribs = "" }
@@ -75,7 +76,9 @@ function handleEvent(event_type, el, socket) {
 // the actual form values.
 function formToJSON(form) {
   return [].reduce.call(form.elements, (data, element) => {
-    data[element.name] = element.value;
+    if (element.name && data) {
+      data[element.name] = element.value;
+    }
     return data;
   }, {});
 }
@@ -117,6 +120,15 @@ function connectElement(el, socket) {
 // that happen to this element and its child nodes.
 function connectEvents(socket) {
   document.addEventListener("DOMContentLoaded", function(evt) {
+
+    components = document.querySelectorAll("[data-component]")
+    for (var i=0; i<components.length; i++) {
+      component = components[i]
+      nearest_item = component.closest("[data-item]:not([data-component])").getAttribute("data-item")
+      id = component.getAttribute("data-component")
+      component.setAttribute("data-item",nearest_item + "-" + id)
+    }
+
     connected = document.querySelectorAll("[data-subscribe]")
     for (var i=0; i<connected.length; i++) {
       connectElement(connected[i], socket);
@@ -144,14 +156,12 @@ function takeAction(domData) {
     for (var i=0; i<matches.length; i++) {
       el = matches[i];
       switch (domData.action) {
-        case "sequenceDiagram":
-          var diagram = Diagram.parse(domData.value)
-          el.innerHTML = ""
-          // console.log("el",el)
-          diagram.drawSVG("sequence", {theme: "simple"})
+        case "chomp":
+          el.value = el.value.slice(0,-1);
+        case "resetForm":
+          el.reset();
           break;
       }
-      // el.closest("[data-version]").setAttribute("data-version",domData.version)
     }
   } else {
       console.log("cound not locate element " + domData.id)
@@ -170,6 +180,12 @@ function modifyDOM(domData) {
           break;
         case "update_attribute":
           el.setAttribute(domData.attribute, domData.value)
+          break;
+        case "value":
+          el.value = domData.value
+          break;
+        case "append_value":
+          el.value += domData.value
           break;
         case "delete":
           el.parentNode.removeChild(el)
