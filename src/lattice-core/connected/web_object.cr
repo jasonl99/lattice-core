@@ -1,5 +1,6 @@
 require "digest/sha1"
 require "./connected_event"
+
 module Lattice
   module Connected
 
@@ -115,14 +116,22 @@ module Lattice
           message: msg,
           session_id: nil,
           socket: nil,
-          direction: "Out"
-        )
+          direction: "Out")
 
 
+        bad_sockets = [] of HTTP::WebSocket
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
-          socket.send msg.to_json
+          begin
+            socket.send msg.to_json
+          rescue
+            # if we can't send, we can't fix it, so just unsubscribe the user.
+            # I've have this happen somewhat regularly when doing a poor-mans load test (i.e., hitting "ctrl-R" as fast as I can
+            bad_sockets << socket
+          end
         end
+        puts "Bad Sockets: #{bad_sockets.map &.object_id}" unless bad_sockets.empty?
+        bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
       end
 
       def update_content( content : String )
@@ -254,6 +263,17 @@ module Lattice
       def unsubscribe( socket : HTTP::WebSocket)
         subscribers.delete(socket)
         unsubscribed socket
+
+        #event is emitted after unsubbing, or it will try to send it to the socket that is in flux
+        emit_event DefaultEvent.new(
+          event_type: "unsubscribe",
+          sender: self,
+          dom_item: dom_id,
+          message: nil,
+          session_id: nil,  #TODO we can get the session id from the socket.
+          socket: nil,      #It might be useful to pass this on so further cleanup can be done.
+          direction: "In"
+        )
       end
 
       # this socket is now unsubscribed from this object
