@@ -18,8 +18,6 @@ class Base62
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
     	int_digest = sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
-      puts "first 8 sha digest: #{sha_digest.first(8)}"
-      puts "calculating int_digest for #{target} #{int_digest}"
       int_digest
 	end
 

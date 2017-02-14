@@ -78,7 +78,6 @@ module Lattice
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
-        puts "Adding #{self.name} #{instance.name} as #{Base62.int_digest instance.signature} #{Base62.string_digest instance.signature}"
         INSTANCES[Base62.int_digest instance.signature] = instance
         @@instances[instance.name] = instance.signature
       end
