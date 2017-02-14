@@ -19,7 +19,7 @@ class Base62
       sha_digest = Digest::SHA1.digest target
     	int_dig = sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
       puts "first 8 sha digest: #{sha_digest.first(8)}"
-      puts "calculating int_digest for #{target} #{target}"
+      puts "calculating int_digest for #{target} #{sha_digest}"
       int_dig
 	end
 
