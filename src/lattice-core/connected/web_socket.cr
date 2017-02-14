@@ -223,26 +223,6 @@ module Lattice::Connected
       end
     end
 
-    # # When an incoming message arrives, it must be from a particular object that has
-    # # already been subscribed to.  This processes the incoming message, determines which
-    # # object should receive it, and sends it to that object.
-    # def self.act ( action_data : Hash(String, JSON::Type), socket : HTTP::WebSocket )
-    #   # action data is in the form of dom=>params 
-    #   # FIXME this is sending subscriber_actions to all subscribed actions,
-    #   # not just the one that was acted upon.
-      
-    #   # find the object for which the action happens
-    #   if ( id = extract_id?( action_data.first_key) )
-    #     acted_object = WebObject::INSTANCES[id]
-    #     session_id = REGISTERED_SESSIONS[socket.object_id]?
-    #     acted_object.subscriber_action(action_data, session_id)
-    #   end
-    #   # subscribed_to(socket).each_value do |subscribed_object|
-    #   #   session_id = REGISTERED_SESSIONS[socket.object_id]?
-    #   #   subscribed_object.subscriber_action(action_data, session_id)
-    #   # end
-    # end
-
     # Handle an incoming socket message
     def self.log(indicator, message, level = :default)
       colorized_indicator = case indicator

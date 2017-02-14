@@ -11,15 +11,19 @@ class Base62
   # 
 	def self.string_digest( target : String) : String
     sha_digest = Digest::SHA1.digest target
-    encode sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
+    encode shorten_digest(sha_digest)
   end
 
   # returns the UInt64 equivalent
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
-    	int_digest = sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
-      int_digest
+    	shorten_digest( sha_digest)
 	end
+
+
+  def self.shorten_digest( digest) : UInt64
+    digest.first(8).reduce(1_u64) {|o,i| o*i}
+  end
 
   # decodes a string_digest to an int
   def self.decode(base_val : String) : UInt64

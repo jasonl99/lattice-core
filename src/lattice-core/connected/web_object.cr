@@ -72,13 +72,15 @@ module Lattice
       end
 
       def self.instance(signature : String)
-        INSTANCES[Base62.int_digest signature]?
+        INSTANCES[Base62.decode signature]?
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
-        INSTANCES[Base62.int_digest instance.signature] = instance
+        puts "#{instance.class} #{instance.name} signature #{instance.signature}"
+        puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
+        INSTANCES[Base62.decode instance.signature] = instance
         @@instances[instance.name] = instance.signature
       end
 
@@ -350,7 +352,7 @@ module Lattice
       end
 
       def self.from_signature( signature : String)
-        if ( instance = INSTANCES[Base62.int_digest signature]? )
+        if ( instance = INSTANCES[Base62.decode signature]? )
           return instance
         end
       end
