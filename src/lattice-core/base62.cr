@@ -17,7 +17,9 @@ class Base62
   # returns the UInt64 equivalent
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
-    	sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
+    	int_dig = sha_digest.first(8).reduce(1_u64) {|o,i| o*i}
+      puts "calculating int_digest for #{target}"
+      int_dig
 	end
 
   # decodes a string_digest to an int
