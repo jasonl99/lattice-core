@@ -78,8 +78,18 @@ module Lattice
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
+        puts "Adding #{self.class} #{self.name} as #{Base62.int_digest instance.signature} #{Base62.string_digest instance.signature}"
         INSTANCES[Base62.int_digest instance.signature] = instance
         @@instances[instance.name] = instance.signature
+      end
+
+      # Use Base62.string_digest
+      # If this is a stored object (a databsae record, for example) the name
+      # should represent that ("order-1021-jun2 155").  The idea is that a replicatable
+      # piece of info, digested, is tough to duplicate unless you have the original pieces
+      # that created it.
+      def signature : String
+        @signature ||= Base62.string_digest "#{self.class}#{self.name}"
       end
 
       # simple debugging catch early on if we are forgetting to clean up after ourselves.
@@ -309,14 +319,6 @@ module Lattice
         val.split("-").last.to_i32?
       end
 
-      # Use Base62.string_digest
-      # If this is a stored object (a databsae record, for example) the name
-      # should represent that ("order-1021-jun2 155").  The idea is that a replicatable
-      # piece of info, digested, is tough to duplicate unless you have the original pieces
-      # that created it.
-      def signature : String
-        @new_signature ||= Base62.string_digest "#{self.class}#{self.name}"
-      end
 
 
       # given a dom_id, attempt to figure out if it is already instantiated
