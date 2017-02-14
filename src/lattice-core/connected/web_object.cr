@@ -3,6 +3,9 @@ require "./connected_event"
 module Lattice
   module Connected
 
+    class TooManyInstances < Exception
+    end
+
     abstract class WebObject
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       SIGNATURE_SIZE = 8 # the number of SHA256 digits to include in the instance signature
@@ -13,6 +16,7 @@ module Lattice
       @@observers = [] of EventObserver | WebObject
       @@observers << EventObserver.new
       @@emitter = EventEmitter.new
+      @@max_instances = 1000  # raise an exception if this is exceeded.
       class_getter observers
       class_getter instances
       class_getter observer
@@ -32,9 +36,21 @@ module Lattice
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
+        check_instance_memory!
         self.class.add_instance self
         # @observers << self
         after_initialize
+      end
+
+      def check_instance_memory!
+        #TODO try garbage collecting first, and only then raise this erro.
+        #gc would look for the first instance that has no subscribers,
+        #call some on_close method (so it could clean itself up, write to db, etc)
+        #and then allow the instance to be created.
+        if @@instances.size >= @@max_instances
+          # puts "INSTANCES.size #{@@instances.size} / @@max_instances #{@@max_instances}"
+          raise TooManyInstances.new("#{self.class} exceeds the maximum of #{@@max_instances}.")
+        end
       end
 
       def after_initialize
