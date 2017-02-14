@@ -9,8 +9,7 @@ module Lattice
 
     abstract class WebObject
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
-      SIGNATURE_SIZE = 8 # the number of SHA256 digits to include in the instance signature
-      INSTANCES = Hash(String, self).new      # all instance, with key as signature
+      INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
       # @@observer = EventObserver.new
@@ -49,7 +48,6 @@ module Lattice
         #call some on_close method (so it could clean itself up, write to db, etc)
         #and then allow the instance to be created.
         if @@instances.size >= @@max_instances
-          # puts "INSTANCES.size #{@@instances.size} / @@max_instances #{@@max_instances}"
           raise TooManyInstances.new("#{self.class} exceeds the maximum of #{@@max_instances}.")
         end
       end
@@ -73,14 +71,14 @@ module Lattice
         obj
       end
 
-      def self.instance(dom_id : String)
-        INSTANCES[dom_id]?
+      def self.instance(signature : String)
+        INSTANCES[Base62.int_digest signature]?
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
-        INSTANCES[instance.signature] = instance
+        INSTANCES[Base62.int_digest instance.signature] = instance
         @@instances[instance.name] = instance.signature
       end
 
@@ -130,7 +128,6 @@ module Lattice
             bad_sockets << socket
           end
         end
-        puts "Bad Sockets: #{bad_sockets.map &.object_id}" unless bad_sockets.empty?
         bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
       end
 
@@ -143,7 +140,6 @@ module Lattice
       def update_component( component : String, value : _ )
         if !@components[component]? || @components[component] != value.to_s
           @components[component] = value.to_s
-          # puts "update_component #{component} to #{value}"
           update({"id"=>dom_id(component), "value"=>value.to_s})
         end
       end
@@ -188,15 +184,6 @@ module Lattice
         id if id && id <= max && id >= 0
       end
 
-      # # A subscriber, with the _session_id_ given, has oassed in an action
-      # # called from WebSocket#on_message
-      # def subscriber_action(dom_item : String, action : Hash(String,JSON::Type), session_id : String?, socket : HTTP::WebSocket)
-      #   if session_id
-      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} from session #{session_id}"
-      #   else
-      #     puts "#{self.class}(#{self.name}) just received #{action} for #{dom_item} without session".colorize(:yellow)
-      #   end
-      # end
 
       # if you're a really popular object, other objects want to hear what you have to say.  This
       # gives those object a change to register their interest.  Any observer gets a notification
@@ -322,10 +309,15 @@ module Lattice
         val.split("-").last.to_i32?
       end
 
-      # come up with a signature that is unique to an instantiated object.
-      def signature
-        @signature ||= Digest::SHA1.hexdigest("#{self.class} #{self.object_id} #{Random.rand}")[0..SIGNATURE_SIZE - 1]
+      # Use Base62.string_digest
+      # If this is a stored object (a databsae record, for example) the name
+      # should represent that ("order-1021-jun2 155").  The idea is that a replicatable
+      # piece of info, digested, is tough to duplicate unless you have the original pieces
+      # that created it.
+      def signature : String
+        @new_signature ||= Base62.string_digest "#{self.class}#{self.name}"
       end
+
 
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
@@ -343,9 +335,8 @@ module Lattice
       end
 
       def self.find(name)
-        puts "looking for #{name}"
-        if (signature = instances[name]?)
-          INSTANCES[signature]
+        if (signature = @@instances[name]?)
+          INSTANCES[Base62.decode signature]
         end
       end
 
@@ -358,10 +349,8 @@ module Lattice
       end
 
       def self.from_signature( signature : String)
-        if (match = /^[0-9,a-f]{#{SIGNATURE_SIZE}}$/.match signature)
-          if ( instance = INSTANCES[signature]? )
-            return instance
-          end
+        if ( instance = INSTANCES[Base62.int_digest signature]? )
+          return instance
         end
       end
 
