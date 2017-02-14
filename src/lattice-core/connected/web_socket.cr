@@ -1,5 +1,9 @@
 module Lattice::Connected
 
+
+  class TooManySessions < Exception
+  end
+
   # A cohort of WebObject used to create a client-server connection between a server-hosted
   # object (WebObject) and a client DOM-representation of that object.  To make the
   # as seamless as possible, with updates and actions ocurring as an event model on *both* sides
@@ -56,7 +60,8 @@ module Lattice::Connected
 
     # VALID_ACTIONS = %w(subscribe click input mouse submit)
 
-    REGISTERED_SESSIONS = {} of UInt64=>String
+    @@max_sessions = 100_000 # I have absolutely no idea what this number and or should be.
+    REGISTERED_SESSIONS = {} of HTTP::WebSocket=>String
 
     # FIXME!! This needs to be drastically improved (the validated payload)
     alias ValidatedPayload = Hash(String, Array(JSON::Type) | Bool | Float64 | Hash(String, JSON::Type) | Int64 | Lattice::Connected::WebObject | String | Nil)
@@ -114,7 +119,7 @@ module Lattice::Connected
       payload = return_val.as(JSON::Any).as_h  # convert to any as a result of &.try
       params = payload.first_value
       dom_item = payload.first_key
-      if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
+      if (session_id = REGISTERED_SESSIONS[socket]?)
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
@@ -167,8 +172,15 @@ module Lattice::Connected
     # makes it trivial to find a session by a socket.
     # in this case we simply set the value, overwriting any that may be present
     def self.register_session(session_id : String, socket : HTTP::WebSocket)
-      REGISTERED_SESSIONS[socket.object_id] = session_id
+      check_socket_memory!
+      REGISTERED_SESSIONS[socket] = session_id
       log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
+    end
+
+    def self.check_socket_memory!
+      if REGISTERED_SESSIONS.size >= @@max_sessions
+        raise TooManySessions.new("WebSocket Error: Maximum number of sessions exceeded.  Current @@max_sessions allowed is #{@@max_sessions}")
+      end
     end
 
     # A socket is created at the page-level; there may be dozens of DOM objects that 
@@ -296,7 +308,7 @@ module Lattice::Connected
     def self.on_close(socket)
       log :process, "Closing socket #{socket.object_id}"
       WebObject::INSTANCES.values.each &.unsubscribe(socket)
-      REGISTERED_SESSIONS.delete socket.object_id
+      REGISTERED_SESSIONS.delete socket
     end
 
   end
