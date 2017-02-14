@@ -58,6 +58,9 @@ module Lattice::Connected
 
     REGISTERED_SESSIONS = {} of UInt64=>String
 
+    # FIXME!! This needs to be drastically improved (the validated payload)
+    alias ValidatedPayload = Hash(String, Array(JSON::Type) | Bool | Float64 | Hash(String, JSON::Type) | Int64 | Lattice::Connected::WebObject | String | Nil)
+
     # validate_payload takes incoming message, parses it as JSON,
     # and processes it according to the ClientServer API.  The key
     # of the message is the data-item dom element that is the subject
@@ -101,8 +104,14 @@ module Lattice::Connected
     #   "params"      => { "src":"/images/ace_of_clubs.png" }
     # }
     def self.validate_payload(message : String, socket : HTTP::WebSocket )
-      return_val = JSON.parse(message)
-      payload = return_val.as_h
+      begin
+        return_val = JSON.parse(message)
+      rescue
+        puts "Error parsing message #{message}".colorize(:white).on(:red)
+        return
+      end
+
+      payload = return_val.as(JSON::Any).as_h  # convert to any as a result of &.try
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket.object_id]?)
@@ -241,7 +250,13 @@ module Lattice::Connected
 
     def self.on_message(message, socket)
 
-      payload = validate_payload(message, socket)
+      unless (payload = validate_payload(message, socket))
+        puts "No payload for #{message}"
+        return
+      else
+        payload = payload.as(ValidatedPayload)
+      end
+
       log :in, "message: #{message} from socket #{socket.object_id}"
 
       if (target = payload["target"]?)
