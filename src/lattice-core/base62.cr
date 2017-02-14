@@ -17,35 +17,33 @@ class Base62
   # returns the UInt64 equivalent
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
-    	shorten_digest( sha_digest)
+    	sd = shorten_digest( sha_digest)
+      sd
 	end
 
 
   def self.shorten_digest( digest) : UInt64
-    digest.first(8).reduce(1_u64) {|o,i| o*i}
+    digest.first(9).reduce(1_u64) {|o,i| o.to_u64 * (i+1)}
   end
 
-  # decodes a string_digest to an int
-  def self.decode(base_val : String) : UInt64
-    int_val = 0_u64
-    base_val.reverse.split(//).each_with_index do |char,index|
-      raise ArgumentError.new "Value passed not a valid Base58 String." unless ALPHABET.index(char)
-      int_val +=( ALPHABET.index(char).as(Int32).to_u64 *   BASE**(index)  ).to_u64 
+  def self.encode( big_int : UInt64) : String
+    multiples = [] of UInt32
+    while (big_int > BASE)
+      multiples << (big_int % BASE).to_u32
+      big_int = (big_int / BASE  )			
     end
-    int_val
+    multiples << big_int.to_u32
+    multiples.reverse.map {|at_pos| ALPHABET[at_pos]}.join("").as(String)
   end
 
-  # encodes UInt64 into a base62 string
-  def self.encode(int_val : UInt64) : String
-    base_val = ""
-    while(int_val >= BASE)
-      mod = int_val % BASE
-      base_val = ALPHABET[mod,1] + base_val
-      int_val = (int_val - mod)/BASE
-    end
-    ALPHABET[int_val,1] + base_val
+  def self.decode ( encoded : String)
+    multiples = encoded.split("").map {|char| ALPHABET.index(char).as(Int32).to_u64}.reverse
+    values = multiples.map_with_index do | unit, index |
+      index == 0 ? unit : (BASE ** index) * unit
+    end	
+    values.sum
   end
-  
+
   
 end
 

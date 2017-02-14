@@ -11,7 +11,7 @@ module Lattice
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
-      @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
+      @@instances = Hash(String, UInt64).new  # ("game1"=>12519823982) int is Base62.int_digest of signature
       # @@observer = EventObserver.new
       @@observers = [] of EventObserver | WebObject
       @@observers << EventObserver.new
@@ -72,7 +72,7 @@ module Lattice
       end
 
       def self.instance(signature : String)
-        INSTANCES[Base62.decode signature]?
+        INSTANCES[Base62.int_digest signature]?
       end
 
       # keep track of all instances, both at the class level (each subclass) and the 
@@ -80,8 +80,8 @@ module Lattice
       def self.add_instance( instance : WebObject)
         puts "#{instance.class} #{instance.name} signature #{instance.signature}"
         puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
-        INSTANCES[Base62.decode instance.signature] = instance
-        @@instances[instance.name] = instance.signature
+        INSTANCES[Base62.int_digest instance.signature] = instance
+        @@instances[instance.name] = Base62.int_digest instance.signature
       end
 
       # Use Base62.string_digest
@@ -91,6 +91,8 @@ module Lattice
       # that created it.
       def signature : String
         @signature ||= Base62.string_digest "#{self.class}#{self.name}"
+        puts "#{self.class} #{self.name} has @signature #{@signature}".colorize(:red).on(:white) if @signature.as(String).size < 5
+        @signature.as(String)
       end
 
       # simple debugging catch early on if we are forgetting to clean up after ourselves.
@@ -282,7 +284,7 @@ module Lattice
       # object (if requested), return the javascript and object for rendering.
       def self.preload(name : String, session_id : String, create = true)
         if (existing = @@instances.fetch(name,nil))
-          target = from_signature(existing)
+          target = INSTANCES[existing]
         else
           target = new(name)
         end
@@ -325,13 +327,18 @@ module Lattice
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
       def self.from_dom_id( dom : String)
+        puts "from_dom_item passed #{dom}"
         if (split = dom.split("-") ).size >= 2
           klass, signature = dom.split("-").first(2)
+          puts "Looking for a #{klass} with signature #{signature}"
+          puts CardGame::CardGame.instances
+          puts CardGame::CardGame::INSTANCES.keys
           # for objects that stay instantiated on the server (objects that are being used
           # by multiple people or that require frequent updates) the default is to use
           # the classname-signature as a dom_id.  The signature is something that is sufficiently
           # random that we can quickly determine if an object is "real".
           if (obj = from_signature(signature))
+            puts "puts found a #{obj.class} named #{obj.name}"
             return obj if obj.class.to_s.split("::").last == klass
           end
         end
@@ -339,7 +346,7 @@ module Lattice
 
       def self.find(name)
         if (signature = @@instances[name]?)
-          INSTANCES[Base62.decode signature]
+          INSTANCES[signature]
         end
       end
 
@@ -352,7 +359,8 @@ module Lattice
       end
 
       def self.from_signature( signature : String)
-        if ( instance = INSTANCES[Base62.decode signature]? )
+        puts "from_signature looking for #{signature} int_digest #{Base62.int_digest signature}"
+        if ( instance = INSTANCES[Base62.int_digest signature]? )
           return instance
         end
       end

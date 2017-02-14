@@ -123,13 +123,12 @@ module Lattice::Connected
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
-        log :validate, "Identified socket #{socket.object_id}"
       end
+      puts "Calling WebObject.from_dom_item for #{dom_item}"
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
         #   puts "The socket is subscribed to the target"
         # end
-        log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
       raise "Too many actions" unless payload.keys.size == 1
@@ -242,6 +241,7 @@ module Lattice::Connected
 
     def self.on_message(message, socket)
 
+      puts "Message on socket: #{message}"
       unless (payload = validate_payload(message, socket))
         puts "No payload for #{message}"
         return
