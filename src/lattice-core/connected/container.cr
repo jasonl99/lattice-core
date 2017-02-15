@@ -13,7 +13,8 @@ module Lattice
       def initialize(@name, @creator : WebObject? = nil, max_items = @max_items)
       # def initialize(@name, @creator : webobject? = nil, max_items = 25)
         @items = RingBuffer(T).new(size: max_items)
-        @element_type = "DIV"
+        @element_options["type"] = "DIV"
+        @element_options["data-items"]="true"
         super(@name, @creator)
       end
 
@@ -22,7 +23,7 @@ module Lattice
         self.as(WebObject).update_attribute(send_max, [socket])
       end
 
-      def content
+      def rendered_content
         item_content
       end
 

@@ -26,6 +26,7 @@ module Lattice
       @observers = [] of self
       @components = {} of String=>String
       @content : String?  # used as default content; useful for external content updates data.
+      @element_options = {} of String=>String
       property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
@@ -33,8 +34,9 @@ module Lattice
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
       property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
-      property element_type = "SPAN"    # used to wrap content
-      property element_class = "WebObject"
+      # property element_type = "SPAN"    # used to wrap content
+      # property element_class = "WebObject"
+      # property element_block = Hash(String,String).new
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
@@ -101,9 +103,9 @@ module Lattice
       end
 
       def rendered_content
-        open_dom_tag + 
+        open_tag + 
         content +
-        close_dom_tag
+        close_tag
       end
 
       def content
@@ -111,13 +113,20 @@ module Lattice
       end
 
       # a header that contains this object and holds its dom_item
-      def open_dom_tag( element_type = @element_type )
-        @element_type = element_type
-        "<#{@element_type} data-item='#{dom_id}' class='#{@element_class}'>"
+      def open_tag
+        tag = @element_options.fetch("type", "span")
+        @element_options["data-item"] = dom_id unless @element_options["data-item"]?
+        tag_string = "<#{tag} "
+        @element_options.reject {|opt,val| opt == "type"}.each do |(opt,val)|
+          puts opt, val
+          tag_string += "#{opt}='#{val}' "
+        end
+        tag_string += ">\n"
+        tag_string
       end
 
-      def close_dom_tag( close_tag = @element_type )
-        "</#{close_tag}>"
+      def close_tag
+        "</#{@element_options.fetch("type","span")}>"
       end
 
       def get_data  # added for GlobalStats
