@@ -29,9 +29,10 @@ module Lattice
         insert({"id"=>dom_id, "value"=>content.content})
       end
 
-      def content
+      def item_content
         @items.values.map(&.content).join
       end
+
     end
   end
 end

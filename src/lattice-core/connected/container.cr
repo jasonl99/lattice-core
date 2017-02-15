@@ -13,6 +13,7 @@ module Lattice
       def initialize(@name, @creator : WebObject? = nil, max_items = @max_items)
       # def initialize(@name, @creator : webobject? = nil, max_items = 25)
         @items = RingBuffer(T).new(size: max_items)
+        @element_type = "DIV"
         super(@name, @creator)
       end
 
@@ -22,8 +23,10 @@ module Lattice
       end
 
       def content
-        @items.values.join
+        item_content
       end
+
+      abstract def item_content
 
       # TODO send out dom modifications to change data-maxChildren
       # so it doesn't have to be specified in the slang file.
@@ -34,12 +37,6 @@ module Lattice
         new_content
       end
 
-      # # reverse logic of child_of to find a WebObject
-      # def self.find_child(dom_id : String)
-      #   if (obj = INSTANCES["#{dom_id}-#{dom_id}"]? )
-      #     return obj if obj.class.to_s.split("::").last == klass
-      #   end
-      # end
 
     end
 

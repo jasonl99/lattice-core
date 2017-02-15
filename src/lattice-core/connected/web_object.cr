@@ -32,7 +32,9 @@ module Lattice
       property subscribers # Each {} of String=>String
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
-
+      property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
+      property element_type = "SPAN"    # used to wrap content
+      property element_class = "WebObject"
       # a new thing must have a name, and that name must be unique so we can
       # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
@@ -45,7 +47,7 @@ module Lattice
       def check_instance_memory!
         #TODO try garbage collecting first, and only then raise this erro.
         #gc would look for the first instance that has no subscribers,
-        #call some on_close method (so it could clean itself up, write to db, etc)
+        #call some on_=close method (so it could clean itself up, write to db, etc)
         #and then allow the instance to be created.
         if @@instances.size >= @@max_instances
           raise TooManyInstances.new("#{self.class} exceeds the maximum of #{@@max_instances}.")
@@ -98,7 +100,24 @@ module Lattice
         "There are a total of #{INSTANCES.size} WebObjects with a total of #{INSTANCES.values.flat_map(&.subscribers).size} subscribers"
       end
 
+      def rendered_content
+        open_dom_tag + 
+        content +
+        close_dom_tag
+      end
+
       def content
+        "<em><h3>Content for #{self.class} #{name} goes in #content </em>"
+      end
+
+      # a header that contains this object and holds its dom_item
+      def open_dom_tag( element_type = @element_type )
+        @element_type = element_type
+        "<#{@element_type} data-item='#{dom_id}' class='#{@element_class}'>"
+      end
+
+      def close_dom_tag( close_tag = @element_type )
+        "</#{close_tag}>"
       end
 
       def get_data  # added for GlobalStats
@@ -239,6 +258,7 @@ module Lattice
       def subscribe( socket : HTTP::WebSocket , session_id : String?)
         unless subscribers.includes? socket
           subscribers << socket
+          update({"id"=>dom_id, "value"=>content}) if auto_add_content
           subscribed session_id, socket if session_id
         else
           # if things are working correctly, we shouldn't ever see this.
@@ -374,12 +394,14 @@ module Lattice
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
-            subs = document.querySelectorAll("[data-subscribe]")
+            subs = document.querySelectorAll("[data-item]")
             for (var i=0;i<subs.length;i++){
               msg = {}
               id = subs[i].getAttribute("data-item")
-              if ( id.split("-").length -1 == 1 ) {
+              console.log("Checking " + id)
+              if ( id.split("-").length == 2 ) {
                 msg[ id ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+                console.log("subscribing",msg)
                 evt.target.send(JSON.stringify(msg))
                }
             }
