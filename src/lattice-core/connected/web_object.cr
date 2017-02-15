@@ -11,7 +11,7 @@ module Lattice
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
-      @@instances = Hash(String, String).new  # individual instances of this class (CardGame, City, etc)
+      @@instances = Hash(String, UInt64).new  # ("game1"=>12519823982) int is Base62.int_digest of signature
       # @@observer = EventObserver.new
       @@observers = [] of EventObserver | WebObject
       @@observers << EventObserver.new
@@ -78,8 +78,19 @@ module Lattice
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
+        # puts "#{instance.class} #{instance.name} signature #{instance.signature}"
+        # puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
         INSTANCES[Base62.int_digest instance.signature] = instance
-        @@instances[instance.name] = instance.signature
+        @@instances[instance.name] = Base62.int_digest instance.signature
+      end
+
+      # Use Base62.string_digest
+      # If this is a stored object (a databsae record, for example) the name
+      # should represent that ("order-1021-jun2 155").  The idea is that a replicatable
+      # piece of info, digested, is tough to duplicate unless you have the original pieces
+      # that created it.
+      def signature : String
+        @signature ||= Base62.string_digest "#{self.class}#{self.name}"
       end
 
       # simple debugging catch early on if we are forgetting to clean up after ourselves.
@@ -107,16 +118,6 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        emit_event DefaultEvent.new(
-          event_type: "message",
-          sender: self,
-          dom_item: dom_id,
-          message: msg,
-          session_id: nil,
-          socket: nil,
-          direction: "Out")
-
-
         bad_sockets = [] of HTTP::WebSocket
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
@@ -129,6 +130,15 @@ module Lattice
           end
         end
         bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
+
+        emit_event DefaultEvent.new(
+          event_type: "message",
+          sender: self,
+          dom_item: dom_id,
+          message: msg,
+          session_id: nil,
+          socket: nil,
+          direction: "Out")
       end
 
       def update_content( content : String )
@@ -271,7 +281,7 @@ module Lattice
       # object (if requested), return the javascript and object for rendering.
       def self.preload(name : String, session_id : String, create = true)
         if (existing = @@instances.fetch(name,nil))
-          target = from_signature(existing)
+          target = INSTANCES[existing]
         else
           target = new(name)
         end
@@ -309,14 +319,6 @@ module Lattice
         val.split("-").last.to_i32?
       end
 
-      # Use Base62.string_digest
-      # If this is a stored object (a databsae record, for example) the name
-      # should represent that ("order-1021-jun2 155").  The idea is that a replicatable
-      # piece of info, digested, is tough to duplicate unless you have the original pieces
-      # that created it.
-      def signature : String
-        @new_signature ||= Base62.string_digest "#{self.class}#{self.name}"
-      end
 
 
       # given a dom_id, attempt to figure out if it is already instantiated
@@ -336,7 +338,7 @@ module Lattice
 
       def self.find(name)
         if (signature = @@instances[name]?)
-          INSTANCES[Base62.decode signature]
+          INSTANCES[signature]
         end
       end
 
@@ -349,6 +351,10 @@ module Lattice
       end
 
       def self.from_signature( signature : String)
+        # puts "from_signature looking for '#{signature}' int_digest #{Base62.int_digest signature}"
+        # puts signature.inspect
+        # puts Base62.int_digest signature
+        # puts "Instance sigs: #{INSTANCES.values.map &.signature}"
         if ( instance = INSTANCES[Base62.int_digest signature]? )
           return instance
         end
@@ -371,10 +377,11 @@ module Lattice
             subs = document.querySelectorAll("[data-subscribe]")
             for (var i=0;i<subs.length;i++){
               msg = {}
-              // OPTIMIZE - would it be better to get the id from data-subscribe rather than data-item?
-              msg[ subs[i].getAttribute("data-item") ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
-              evt.target.send(JSON.stringify(msg))
-              console.log(msg)
+              id = subs[i].getAttribute("data-item")
+              if ( id.split("-").length -1 == 1 ) {
+                msg[ id ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+                evt.target.send(JSON.stringify(msg))
+               }
             }
 
         };

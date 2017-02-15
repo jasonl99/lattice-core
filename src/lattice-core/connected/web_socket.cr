@@ -123,13 +123,11 @@ module Lattice::Connected
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
-        log :validate, "Identified socket #{socket.object_id}"
       end
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
         #   puts "The socket is subscribed to the target"
         # end
-        log :validate, "Identified data-item #{dom_item} as #{target.class.to_s.split("::").last}-#{target.name}"
       end
       result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
       raise "Too many actions" unless payload.keys.size == 1
@@ -202,16 +200,16 @@ module Lattice::Connected
     # end
 
     # a debugging aid to show how much data we have laying around
-    def self.memory_used
-      puts "WebSocket".colorize.underline
-      puts "Registered Sessions: #{WebSocket::REGISTERED_SESSIONS}"
-      puts 
-      puts "WebObject".colorize.underline
-      WebObject::INSTANCES.values.each do |instance|
-        puts "  #{instance.to_s.colorize.underline} #{instance.name.colorize.underline}"
-        puts "     Subscribers: #{instance.subscribers.size}"
-      end
-    end
+    # def self.memory_used
+    #   puts "WebSocket".colorize.underline
+    #   puts "Registered Sessions: #{WebSocket::REGISTERED_SESSIONS}"
+    #   puts 
+    #   puts "WebObject".colorize.underline
+    #   WebObject::INSTANCES.values.each do |instance|
+    #     puts "  #{instance.to_s.colorize.underline} #{instance.name.colorize.underline}"
+    #     puts "     Subscribers: #{instance.subscribers.size}"
+    #   end
+    # end
 
     # OPTIMIZE this should also be used by extract_ids
     def self.extract_id?( from : String)
@@ -222,26 +220,6 @@ module Lattice::Connected
         nil
       end
     end
-
-    # # When an incoming message arrives, it must be from a particular object that has
-    # # already been subscribed to.  This processes the incoming message, determines which
-    # # object should receive it, and sends it to that object.
-    # def self.act ( action_data : Hash(String, JSON::Type), socket : HTTP::WebSocket )
-    #   # action data is in the form of dom=>params 
-    #   # FIXME this is sending subscriber_actions to all subscribed actions,
-    #   # not just the one that was acted upon.
-      
-    #   # find the object for which the action happens
-    #   if ( id = extract_id?( action_data.first_key) )
-    #     acted_object = WebObject::INSTANCES[id]
-    #     session_id = REGISTERED_SESSIONS[socket.object_id]?
-    #     acted_object.subscriber_action(action_data, session_id)
-    #   end
-    #   # subscribed_to(socket).each_value do |subscribed_object|
-    #   #   session_id = REGISTERED_SESSIONS[socket.object_id]?
-    #   #   subscribed_object.subscriber_action(action_data, session_id)
-    #   # end
-    # end
 
     # Handle an incoming socket message
     def self.log(indicator, message, level = :default)
@@ -269,12 +247,15 @@ module Lattice::Connected
         payload = payload.as(ValidatedPayload)
       end
 
-      log :in, "message: #{message} from socket #{socket.object_id}"
+      log :in, "message: #message} from socket #{socket.object_id}"
+
 
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
         params = payload["params"].as(Hash(String,JSON::Type))
         if params["action"] == "subscribe"
+          puts "subscribe message"
+          puts target
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
