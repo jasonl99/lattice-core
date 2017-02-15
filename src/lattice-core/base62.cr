@@ -1,3 +1,4 @@
+require "digest/sha1"
 class Base62
 
   class ArgumentError < Exception; end
@@ -11,19 +12,23 @@ class Base62
   # 
 	def self.string_digest( target : String) : String
     sha_digest = Digest::SHA1.digest target
-    encode shorten_digest(sha_digest)
+    sd = shorten_digest(sha_digest)
+    encode sd
   end
 
   # returns the UInt64 equivalent
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
-    	sd = shorten_digest( sha_digest)
-      sd
+    	sd = shorten_digest(sha_digest)
+      return sd
 	end
 
 
-  def self.shorten_digest( digest) : UInt64
-    digest.first(9).reduce(1_u64) {|o,i| o.to_u64 * (i+1)}
+  def self.shorten_digest( digest : StaticArray(UInt8,20))
+    values = digest.first(8).map_with_index do | unit, index |
+      index == 0 ? unit : (BASE ** index) * unit
+    end	
+    values.sum
   end
 
   def self.encode( big_int : UInt64) : String

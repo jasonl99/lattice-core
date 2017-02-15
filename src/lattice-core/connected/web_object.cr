@@ -78,8 +78,8 @@ module Lattice
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
-        puts "#{instance.class} #{instance.name} signature #{instance.signature}"
-        puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
+        # puts "#{instance.class} #{instance.name} signature #{instance.signature}"
+        # puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
         INSTANCES[Base62.int_digest instance.signature] = instance
         @@instances[instance.name] = Base62.int_digest instance.signature
       end
@@ -91,8 +91,6 @@ module Lattice
       # that created it.
       def signature : String
         @signature ||= Base62.string_digest "#{self.class}#{self.name}"
-        puts "#{self.class} #{self.name} has @signature #{@signature}".colorize(:red).on(:white) if @signature.as(String).size < 5
-        @signature.as(String)
       end
 
       # simple debugging catch early on if we are forgetting to clean up after ourselves.
@@ -120,16 +118,6 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        emit_event DefaultEvent.new(
-          event_type: "message",
-          sender: self,
-          dom_item: dom_id,
-          message: msg,
-          session_id: nil,
-          socket: nil,
-          direction: "Out")
-
-
         bad_sockets = [] of HTTP::WebSocket
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
@@ -142,6 +130,15 @@ module Lattice
           end
         end
         bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
+
+        emit_event DefaultEvent.new(
+          event_type: "message",
+          sender: self,
+          dom_item: dom_id,
+          message: msg,
+          session_id: nil,
+          socket: nil,
+          direction: "Out")
       end
 
       def update_content( content : String )
@@ -327,18 +324,13 @@ module Lattice
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
       def self.from_dom_id( dom : String)
-        puts "from_dom_item passed #{dom}"
         if (split = dom.split("-") ).size >= 2
           klass, signature = dom.split("-").first(2)
-          puts "Looking for a #{klass} with signature #{signature}"
-          puts CardGame::CardGame.instances
-          puts CardGame::CardGame::INSTANCES.keys
           # for objects that stay instantiated on the server (objects that are being used
           # by multiple people or that require frequent updates) the default is to use
           # the classname-signature as a dom_id.  The signature is something that is sufficiently
           # random that we can quickly determine if an object is "real".
           if (obj = from_signature(signature))
-            puts "puts found a #{obj.class} named #{obj.name}"
             return obj if obj.class.to_s.split("::").last == klass
           end
         end
@@ -359,7 +351,10 @@ module Lattice
       end
 
       def self.from_signature( signature : String)
-        puts "from_signature looking for #{signature} int_digest #{Base62.int_digest signature}"
+        # puts "from_signature looking for '#{signature}' int_digest #{Base62.int_digest signature}"
+        # puts signature.inspect
+        # puts Base62.int_digest signature
+        # puts "Instance sigs: #{INSTANCES.values.map &.signature}"
         if ( instance = INSTANCES[Base62.int_digest signature]? )
           return instance
         end
@@ -382,10 +377,11 @@ module Lattice
             subs = document.querySelectorAll("[data-subscribe]")
             for (var i=0;i<subs.length;i++){
               msg = {}
-              // OPTIMIZE - would it be better to get the id from data-subscribe rather than data-item?
-              msg[ subs[i].getAttribute("data-item") ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
-              evt.target.send(JSON.stringify(msg))
-              console.log(msg)
+              id = subs[i].getAttribute("data-item")
+              if ( id.split("-").length -1 == 1 ) {
+                msg[ id ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+                evt.target.send(JSON.stringify(msg))
+               }
             }
 
         };

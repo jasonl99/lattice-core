@@ -18,7 +18,7 @@ module Lattice
       end
 
       def self.on_event(event, sender)
-        puts "EventObserver Class: event reported by #{sender.name} for #{event.dom_item}"
+        # puts "EventObserver Class: event reported by #{sender.name} for #{event.dom_item}"
       end
 
 

@@ -124,7 +124,6 @@ module Lattice::Connected
         #   puts "The user on this session is #{session.string?("name")}"
         # end
       end
-      puts "Calling WebObject.from_dom_item for #{dom_item}"
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
         #   puts "The socket is subscribed to the target"
@@ -201,16 +200,16 @@ module Lattice::Connected
     # end
 
     # a debugging aid to show how much data we have laying around
-    def self.memory_used
-      puts "WebSocket".colorize.underline
-      puts "Registered Sessions: #{WebSocket::REGISTERED_SESSIONS}"
-      puts 
-      puts "WebObject".colorize.underline
-      WebObject::INSTANCES.values.each do |instance|
-        puts "  #{instance.to_s.colorize.underline} #{instance.name.colorize.underline}"
-        puts "     Subscribers: #{instance.subscribers.size}"
-      end
-    end
+    # def self.memory_used
+    #   puts "WebSocket".colorize.underline
+    #   puts "Registered Sessions: #{WebSocket::REGISTERED_SESSIONS}"
+    #   puts 
+    #   puts "WebObject".colorize.underline
+    #   WebObject::INSTANCES.values.each do |instance|
+    #     puts "  #{instance.to_s.colorize.underline} #{instance.name.colorize.underline}"
+    #     puts "     Subscribers: #{instance.subscribers.size}"
+    #   end
+    # end
 
     # OPTIMIZE this should also be used by extract_ids
     def self.extract_id?( from : String)
@@ -241,7 +240,6 @@ module Lattice::Connected
 
     def self.on_message(message, socket)
 
-      puts "Message on socket: #{message}"
       unless (payload = validate_payload(message, socket))
         puts "No payload for #{message}"
         return
@@ -249,12 +247,15 @@ module Lattice::Connected
         payload = payload.as(ValidatedPayload)
       end
 
-      log :in, "message: #{message} from socket #{socket.object_id}"
+      log :in, "message: #message} from socket #{socket.object_id}"
+
 
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
         params = payload["params"].as(Hash(String,JSON::Type))
         if params["action"] == "subscribe"
+          puts "subscribe message"
+          puts target
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?

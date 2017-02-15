@@ -16,6 +16,11 @@ module Lattice
         super(@name, @creator)
       end
 
+      def subscribed(session, socket)
+        send_max = {"id"=>dom_id("items"),"attribute"=>"data-maxChildren","value"=>@max_items.to_s}
+        self.as(WebObject).update_attribute(send_max, [socket])
+      end
+
       def content
         @items.values.join
       end
