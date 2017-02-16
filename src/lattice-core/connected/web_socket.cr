@@ -181,35 +181,6 @@ module Lattice::Connected
       end
     end
 
-    # A socket is created at the page-level; there may be dozens of DOM objects that 
-    # are subscribed to.   The socket, at its convenience, sends a _subscribe_ action
-    # to the server, which contains a session_id and the dom ids for which it would like
-    # to subscribe.  After the session has been verified and registered, we extract the ids
-    # from subscribed_data and send the `subscribe` message with out socket to each 
-    # object.
-    # def self.subscribe( subscribe_data : Hash(String, JSON::Type) | Nil, socket : HTTP::WebSocket )
-    #   # verify that a session exists, otherwise we don't allow a subscription
-    #   return unless subscribe_data && (session = verify_session(subscribe_data["sessionID"].to_s))
-    #   register_session(session.as(Session), socket)
-    #   supplied_ids = extract_ids(subscribe_data["ids"].as(Array(JSON::Type)))
-    #   supplied_ids.each do |id| 
-    #     WebObject::INSTANCES[id].subscribe(socket)
-    #   end
-    #   memory_used
-
-    # end
-
-    # a debugging aid to show how much data we have laying around
-    # def self.memory_used
-    #   puts "WebSocket".colorize.underline
-    #   puts "Registered Sessions: #{WebSocket::REGISTERED_SESSIONS}"
-    #   puts 
-    #   puts "WebObject".colorize.underline
-    #   WebObject::INSTANCES.values.each do |instance|
-    #     puts "  #{instance.to_s.colorize.underline} #{instance.name.colorize.underline}"
-    #     puts "     Subscribers: #{instance.subscribers.size}"
-    #   end
-    # end
 
     # OPTIMIZE this should also be used by extract_ids
     def self.extract_id?( from : String)
@@ -254,8 +225,6 @@ module Lattice::Connected
         target = target.as(Lattice::Connected::WebObject)
         params = payload["params"].as(Hash(String,JSON::Type))
         if params["action"] == "subscribe"
-          puts "subscribe message"
-          puts target
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?

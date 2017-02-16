@@ -38,7 +38,6 @@ module Lattice
       def initialize(@name : String, @creator : WebObject? = nil)
         check_instance_memory!
         self.class.add_instance self
-        # @observers << self
         after_initialize
       end
 
@@ -164,6 +163,7 @@ module Lattice
         end
         bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
 
+        # puts "Message sent: #{msg}"
         emit_event DefaultEvent.new(
           event_type: "message",
           sender: self,
@@ -174,16 +174,16 @@ module Lattice
           direction: "Out")
       end
 
-      def update_content( content : String )
+      def update_content( content : String, subscribers = self.subscribers)
         return if @content == content
         @content = content
-        update({"id"=>dom_id, "value"=>content})
+        update({"id"=>dom_id, "value"=>content}, subscribers)
       end
 
-      def update_component( component : String, value : _ )
+      def update_component( component : String, value : _ , subscribers = self.subscribers)
         if !@components[component]? || @components[component] != value.to_s
           @components[component] = value.to_s
-          update({"id"=>dom_id(component), "value"=>value.to_s})
+          update({"id"=>dom_id(component), "value"=>value.to_s}, subscribers)
         end
       end
 
@@ -272,8 +272,8 @@ module Lattice
       def subscribe( socket : HTTP::WebSocket , session_id : String?)
         unless subscribers.includes? socket
           subscribers << socket
-          update({"id"=>dom_id, "value"=>content}) if auto_add_content
           subscribed session_id, socket if session_id
+          # update({"id"=>dom_id, "value"=>content}, [socket]) if auto_add_content
         else
           # if things are working correctly, we shouldn't ever see this.
           puts "socket #{socket.object_id} already in #{subscribers.map &.object_id}".colorize(:red)

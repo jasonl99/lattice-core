@@ -187,9 +187,7 @@ function addSubscribers(el, socket = connected_object) {
     id = connected[i].getAttribute("data-item")
     if (id.split("-").length == 2) {
       msg = {}
-      msg[id] = {action:"subscribe",params: {session_id:session_id}}
       socket.send(JSON.stringify(msg))
-      console.log("subscribing",msg)
     }
   }
 }
