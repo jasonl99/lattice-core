@@ -1,5 +1,4 @@
 function sendEvent(msg,socket) {
-  console.log("ClientServer message", msg)
   socket.send(JSON.stringify(msg)) 
 }
 
@@ -29,14 +28,10 @@ function baseEvent(evt,event_action, action_params = {}) {
 // On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket) {
-  console.log("handle event", event_type)
   switch (event_type) {
     case "click":
-      console.log("Element is ", el)
       el.addEventListener("click", function(evt) {
-        console.log("In click")
         msg = baseEvent(evt,"click")
-        console.log("Send message", msg)
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
       })
@@ -147,7 +142,6 @@ function connectEvents(socket) {
 // handle an incoming message over the socket
 function handleSocketMessage(message) {
   payload = JSON.parse(message);
-  console.log("Message Received", payload)
   if ("dom" in payload) {
     console.log("ServerClient Dom: ", payload.dom)
     modifyDOM(payload.dom);
@@ -193,7 +187,7 @@ function addSubscribers(el, socket = connected_object) {
     id = connected[i].getAttribute("data-item")
     if (id.split("-").length == 2) {
       msg = {}
-      msg[id] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+      msg[id] = {action:"subscribe",params: {session_id:session_id}}
       socket.send(JSON.stringify(msg))
       console.log("subscribing",msg)
     }

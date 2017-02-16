@@ -34,11 +34,7 @@ module Lattice
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
       property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
-      # property element_type = "SPAN"    # used to wrap content
-      # property element_class = "WebObject"
-      # property element_block = Hash(String,String).new
-      # a new thing must have a name, and that name must be unique so we can
-      # find them across instances.
+
       def initialize(@name : String, @creator : WebObject? = nil)
         check_instance_memory!
         self.class.add_instance self
@@ -102,8 +98,8 @@ module Lattice
         "There are a total of #{INSTANCES.size} WebObjects with a total of #{INSTANCES.values.flat_map(&.subscribers).size} subscribers"
       end
 
-      def rendered_content
-        open_tag + 
+      def rendered_content( dom_id : String? = nil)
+        open_tag(dom_id) + 
         content +
         close_tag
       end
@@ -112,11 +108,20 @@ module Lattice
         "<em><h3>Content for #{self.class} #{name} goes in #content </em>"
       end
 
+      # useful for 
+      def add_element_class( class_name)
+        el_class = @element_options["class"]
+        unless el_class && el_class.split(" ").includes? class_name
+          @element_options["class"] = "#{el_class} #{class_name}".lstrip 
+        end
+      end
+
       # a header that contains this object and holds its dom_item
-      def open_tag
-        tag = @element_options.fetch("type", "span")
-        @element_options["data-item"] = dom_id unless @element_options["data-item"]?
-        tag_string = "<#{tag} "
+      def open_tag(rendered_dom_id : String? = nil)
+        tag = @element_options.fetch("type", "div")
+        # three options for dom id, selected in priority order
+        data_item_id = rendered_dom_id || @element_options["data-item"]? || dom_id
+        tag_string = "<#{tag} data-item='#{data_item_id}' "
         @element_options.reject {|opt,val| opt == "type"}.each do |(opt,val)|
           puts opt, val
           tag_string += "#{opt}='#{val}' "
@@ -126,7 +131,7 @@ module Lattice
       end
 
       def close_tag
-        "</#{@element_options.fetch("type","span")}>"
+        "</#{@element_options.fetch("type","div")}>"
       end
 
       def get_data  # added for GlobalStats
@@ -399,6 +404,7 @@ module Lattice
       # class, not the id.
       def self.javascript(session_id : String, target : _)
         javascript = <<-JS
+        session_id = "#{session_id}"
         #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {

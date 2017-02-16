@@ -5,16 +5,15 @@ module Lattice
       property max_items : Int32 = 25
       property items : RingBuffer(T)
       property next_index = 0
+      property items_dom_id : String?
 
       def next_index
         @next_index += 1
       end
 
       def initialize(@name, @creator : WebObject? = nil, max_items = @max_items)
-      # def initialize(@name, @creator : webobject? = nil, max_items = 25)
         @items = RingBuffer(T).new(size: max_items)
         @element_options["type"] = "DIV"
-        @element_options["data-items"]="true"
         super(@name, @creator)
       end
 
@@ -23,21 +22,22 @@ module Lattice
         self.as(WebObject).update_attribute(send_max, [socket])
       end
 
+      def add_content(new_content : T, update_sockets = true)
+        @items << new_content
+        insert({"id"=>items_dom_id || dom_id, "value"=>new_content}) if update_sockets
+      end
+
       def rendered_content
+        open_tag + content + close_tag
+      end
+
+      def content
         item_content
       end
 
-      abstract def item_content
-
-      # TODO send out dom modifications to change data-maxChildren
-      # so it doesn't have to be specified in the slang file.
-      # In new_content, the JSON message with id and value should have
-      # max_items included.
-      def add_content(new_content)
-        @items << new_content
-        new_content
+      def item_content
+        @items.values.map(&.to_s).join("\n")
       end
-
 
     end
 
