@@ -23,14 +23,14 @@ module Lattice
       def add_content(new_content : ListType, update_sockets = true)
         @items << new_content
         # FIXME removed while testing standalone
-        insert({"id"=>items_dom_id || dom_id, "value"=>new_content}) if update_sockets
+        insert({"id"=>(items_dom_id || dom_id).as(String), "value"=>render_item new_content, @items.values.size + 1}) if update_sockets
       end
 
       def content
         item_content
       end
 
-      def item_content
+      def item_content : String
         @items.values.map_with_index {|obj, index| render_item obj, index}.join
       end
 
@@ -42,13 +42,14 @@ module Lattice
       def render_item(obj, index)
         val = nil
         case
-        when !val && obj.responds_to?(:rendered_content)
-          val = obj.rendered_content( dom_id: "#{dom_id("item")}:#{index}" )
+        when !val && obj.responds_to?(:to_html)
+          val = obj.to_html( dom_id: "#{dom_id("item")}:#{index}" )
         when !val && obj.responds_to?(:content)
           val = obj.content
         else
           val = obj.to_s
         end
+        val.as(String)
       end
 
     end

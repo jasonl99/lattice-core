@@ -97,7 +97,7 @@ module Lattice
         "There are a total of #{INSTANCES.size} WebObjects with a total of #{INSTANCES.values.flat_map(&.subscribers).size} subscribers"
       end
 
-      def rendered_content( dom_id : String? = nil)
+      def to_html( dom_id : String? = nil)
         open_tag(dom_id) + 
         content +
         close_tag

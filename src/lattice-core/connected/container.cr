@@ -27,7 +27,7 @@ module Lattice
         insert({"id"=>items_dom_id || dom_id, "value"=>new_content}) if update_sockets
       end
 
-      def rendered_content
+      def to_html
         open_tag + content + close_tag
       end
 
