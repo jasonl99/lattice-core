@@ -21,7 +21,7 @@ With this change, it becomes a lot easier to have a container, and now there's n
 class Counter
   property value = 0
   def to_html( dom_id )
-    "<div><span data-item='#{dom_id}' class='counter'>#{@value}</span>"
+    "<span data-item='#{dom_id}' class='counter'>#{@value}</span>"
   end
 end
 ```
