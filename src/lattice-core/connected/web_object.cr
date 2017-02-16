@@ -109,7 +109,7 @@ module Lattice
 
       # useful for 
       def add_element_class( class_name)
-        el_class = @element_options["class"]
+        el_class = @element_options["class"]?
         unless el_class && el_class.split(" ").includes? class_name
           @element_options["class"] = "#{el_class} #{class_name}".lstrip 
         end
