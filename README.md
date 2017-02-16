@@ -21,7 +21,7 @@ javascript.  This framework won't work for them either.  Think of it as a platfo
 
 ## Yeah, but, _Require_ websockets?  Why be so limiting?
 
-I've been programming for a long time.  I've experimented with different frameworks, and I've played around many times with the newest "language of the month."  It's incredibly overwhelming to be faced with a new language that can do something a litle better, or that promises some big advantage of last month's favorite.   And just "trying out" a new language does not give you enough time to learn the nuances that are important to efficient programming.
+I've been programming for a long time.  I've experimented with different frameworks, and I've played around many times with the newest "language of the month."  It's incredibly overwhelming to be faced with a new language that can do something a little better, or that promises some big advantage of last month's favorite.   And just "trying out" a new language does not give you enough time to learn the nuances that are important to efficient programming.
 
 There are ton of mature  frameworks out there already that do far more than I could ever hope to accomplish with a more traditional way http- or ajax-first approach.  This frameworks tries to be something completely different, in a completely different way.  
 
