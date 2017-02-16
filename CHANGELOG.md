@@ -15,7 +15,7 @@ In retrospect, this seems like a glaring oversight.  Now, `card_game.slang` only
 == chat_room.to_html
 ```
 
-With this change, it becomes a lot easier to have a container, and now there's no need for `StaticBuffer`(strings) and `DynamicBuffer`(WebObjects).  The new [`ObjectList`](https://github.com/jasonl99/lattice-core/blob/cleaner_dom/src/lattice-core/connected/object_list.cr) handles both, and they can be intermixed.  In fact, this makes it easier to do add _any_ class that can have advanced rendering capabilities without the extra overhead of WebObject.  Consider a Person class that just rendered a person's name:
+With this change, it becomes a lot easier to have a container, and now there's no need for `StaticBuffer`(strings) and `DynamicBuffer`(WebObjects).  The new [`ObjectList`](https://github.com/jasonl99/lattice-core/blob/cleaner_dom/src/lattice-core/connected/object_list.cr) handles both, and they can be intermixed.  In fact, this makes it easier to do add _any_ class that can have advanced rendering capabilities without the extra overhead of WebObject.  Consider a Counter class that just renders a...counter:
 
 ```ruby
 class Counter
