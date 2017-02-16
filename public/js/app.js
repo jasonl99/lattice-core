@@ -1,16 +1,14 @@
 function sendEvent(msg,socket) {
-  console.log("ClientServer message", msg)
   socket.send(JSON.stringify(msg)) 
 }
 
 function baseEvent(evt,event_action, action_params = {}) {
-  id = evt.target.getAttribute("data-item")
-  console.log(evt)
+  // id = evt.target.getAttribute("data-item")
+  // console.log(evt)
   msg = {}
   send_attribs = evt.target.getAttribute("data-event-attributes")
   if (!send_attribs) { send_attribs = "" }
   attribs = getItems(send_attribs)
-  // attribs = send_attribs.split(",")
   final_params = {}
   for (var i=0;i<attribs.length;i++) {
     final_params[attribs[i]] = evt.target.getAttribute(attribs[i])
@@ -21,6 +19,7 @@ function baseEvent(evt,event_action, action_params = {}) {
     // param_attribs.  So if we are sending the elements <div class="myclass">
     final_params[attrname] = action_params[attrname]; 
   }
+  id = event.target.getAttribute("data-item")
   msg[id] = {action: event_action, params: final_params}
   return msg
 
@@ -29,7 +28,6 @@ function baseEvent(evt,event_action, action_params = {}) {
 // On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket) {
-  console.log("handle event", event_type)
   switch (event_type) {
     case "click":
       el.addEventListener("click", function(evt) {
@@ -105,7 +103,7 @@ function handleElementEvents(el,socket) {
 // already will send data as needed _to_ this object from the server
 // This finds nodes within the object that send data back to the
 // server (clicks, form submits, etc)
-function connectElement(el, socket) {
+function connectElements(el, socket) {
   evented_elements = el.querySelectorAll("[data-events]")
   for (var i=0; i<evented_elements.length; i++) {
     handleElementEvents(evented_elements[i], socket);
@@ -121,6 +119,7 @@ function connectElement(el, socket) {
 function connectEvents(socket) {
   document.addEventListener("DOMContentLoaded", function(evt) {
 
+    // compoents are a bit of a work in progress
     components = document.querySelectorAll("[data-component]")
     for (var i=0; i<components.length; i++) {
       component = components[i]
@@ -129,10 +128,13 @@ function connectEvents(socket) {
       component.setAttribute("data-item",nearest_item + "-" + id)
     }
 
-    connected = document.querySelectorAll("[data-subscribe]")
+    // for each element that has a data-events entry, set up the handlers
+    connected = document.querySelectorAll("[data-events]")
     for (var i=0; i<connected.length; i++) {
-      connectElement(connected[i], socket);
+      handleElementEvents(connected[i], socket);
     }
+
+
   })
 }  
 
@@ -168,6 +170,29 @@ function takeAction(domData) {
   }
 }
 
+// this happens in connectEvents too
+function addListeners(el, socket = connected_object) {
+  connected = el.querySelectorAll("[data-events]")
+  for (var i=0; i<connected.length; i++) {
+    handleElementEvents(connected[i], socket);
+  }
+}
+
+function addSubscribers(el, socket = connected_object) {
+  connected = el.querySelectorAll("[data-item]")
+  if ( connected.length > 0) {
+    console.log("Adding subscribers for new content.", el.getAttribute("data-item"), connected)
+  }
+  for (var i=0; i<connected.length; i++) {
+    id = connected[i].getAttribute("data-item")
+    if (id.split("-").length == 2) {
+      msg = {}
+      socket.send(JSON.stringify(msg))
+    }
+  }
+}
+
+
 // modify the dom based on the imformation contained in domData
 function modifyDOM(domData) {
   // if (matches = document.querySelectorAll("#" + domData.id)) {
@@ -177,15 +202,21 @@ function modifyDOM(domData) {
       switch (domData.action) {
         case "update":
           el.innerHTML = domData.value
+          addListeners(el)
+          addSubscribers(el)
           break;
         case "update_attribute":
           el.setAttribute(domData.attribute, domData.value)
           break;
         case "value":
           el.value = domData.value
+          addListeners(el)
+          addSubscribers(el)
           break;
         case "append_value":
           el.value += domData.value
+          addListeners(el)
+          addSubscribers(el)
           break;
         case "delete":
           el.parentNode.removeChild(el)
@@ -199,6 +230,8 @@ function modifyDOM(domData) {
               el.removeChild(children[0])
             }
           }
+          addListeners(el.lastChild)
+          addSubscribers(el.lastChild)
           break;
       }
       // el.closest("[data-version]").setAttribute("data-version",domData.version)

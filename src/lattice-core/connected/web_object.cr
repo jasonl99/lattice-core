@@ -26,26 +26,25 @@ module Lattice
       @observers = [] of self
       @components = {} of String=>String
       @content : String?  # used as default content; useful for external content updates data.
+      @element_options = {} of String=>String
       property index = 0 # used when this object is a member of Container(T) subclass
       property version = Int64.new(0)
       property creator : WebObject?
       property subscribers # Each {} of String=>String
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
+      property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
 
-      # a new thing must have a name, and that name must be unique so we can
-      # find them across instances.
       def initialize(@name : String, @creator : WebObject? = nil)
         check_instance_memory!
         self.class.add_instance self
-        # @observers << self
         after_initialize
       end
 
       def check_instance_memory!
         #TODO try garbage collecting first, and only then raise this erro.
         #gc would look for the first instance that has no subscribers,
-        #call some on_close method (so it could clean itself up, write to db, etc)
+        #call some on_=close method (so it could clean itself up, write to db, etc)
         #and then allow the instance to be created.
         if @@instances.size >= @@max_instances
           raise TooManyInstances.new("#{self.class} exceeds the maximum of #{@@max_instances}.")
@@ -98,7 +97,40 @@ module Lattice
         "There are a total of #{INSTANCES.size} WebObjects with a total of #{INSTANCES.values.flat_map(&.subscribers).size} subscribers"
       end
 
+      def to_html( dom_id : String? = nil)
+        open_tag(dom_id) + 
+        content +
+        close_tag
+      end
+
       def content
+        "<em><h3>Content for #{self.class} #{name} goes in #content </em>"
+      end
+
+      # useful for 
+      def add_element_class( class_name)
+        el_class = @element_options["class"]?
+        unless el_class && el_class.split(" ").includes? class_name
+          @element_options["class"] = "#{el_class} #{class_name}".lstrip 
+        end
+      end
+
+      # a header that contains this object and holds its dom_item
+      def open_tag(rendered_dom_id : String? = nil)
+        tag = @element_options.fetch("type", "div")
+        # three options for dom id, selected in priority order
+        data_item_id = rendered_dom_id || @element_options["data-item"]? || dom_id
+        tag_string = "<#{tag} data-item='#{data_item_id}' "
+        @element_options.reject {|opt,val| opt == "type"}.each do |(opt,val)|
+          puts opt, val
+          tag_string += "#{opt}='#{val}' "
+        end
+        tag_string += ">\n"
+        tag_string
+      end
+
+      def close_tag
+        "</#{@element_options.fetch("type","div")}>"
       end
 
       def get_data  # added for GlobalStats
@@ -131,6 +163,7 @@ module Lattice
         end
         bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
 
+        # puts "Message sent: #{msg}"
         emit_event DefaultEvent.new(
           event_type: "message",
           sender: self,
@@ -141,16 +174,16 @@ module Lattice
           direction: "Out")
       end
 
-      def update_content( content : String )
+      def update_content( content : String, subscribers = self.subscribers)
         return if @content == content
         @content = content
-        update({"id"=>dom_id, "value"=>content})
+        update({"id"=>dom_id, "value"=>content}, subscribers)
       end
 
-      def update_component( component : String, value : _ )
+      def update_component( component : String, value : _ , subscribers = self.subscribers)
         if !@components[component]? || @components[component] != value.to_s
           @components[component] = value.to_s
-          update({"id"=>dom_id(component), "value"=>value.to_s})
+          update({"id"=>dom_id(component), "value"=>value.to_s}, subscribers)
         end
       end
 
@@ -240,6 +273,7 @@ module Lattice
         unless subscribers.includes? socket
           subscribers << socket
           subscribed session_id, socket if session_id
+          # update({"id"=>dom_id, "value"=>content}, [socket]) if auto_add_content
         else
           # if things are working correctly, we shouldn't ever see this.
           puts "socket #{socket.object_id} already in #{subscribers.map &.object_id}".colorize(:red)
@@ -370,16 +404,19 @@ module Lattice
       # class, not the id.
       def self.javascript(session_id : String, target : _)
         javascript = <<-JS
+        session_id = "#{session_id}"
         #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
-            subs = document.querySelectorAll("[data-subscribe]")
+            subs = document.querySelectorAll("[data-item]")
             for (var i=0;i<subs.length;i++){
               msg = {}
               id = subs[i].getAttribute("data-item")
-              if ( id.split("-").length -1 == 1 ) {
+              console.log("Checking " + id)
+              if ( id.split("-").length == 2 ) {
                 msg[ id ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
+                console.log("subscribing",msg)
                 evt.target.send(JSON.stringify(msg))
                }
             }
