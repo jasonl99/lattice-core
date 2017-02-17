@@ -8,8 +8,9 @@ dependencies:
   kemal:
     github: kemalcr/kemal
   kemal-session:
-    github: kemalcr/kemal-session
-    branch: master
+    github: jasonl99/kemal-session
+    # branch: master
+    # path: /home/jason/crystal/kemal-session
   baked_file_system:
     github: schovi/baked_file_system
 

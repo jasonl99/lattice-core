@@ -123,6 +123,9 @@ module Lattice::Connected
         # if (session = Session.get session_id)
         #   puts "The user on this session is #{session.string?("name")}"
         # end
+        puts "The session for this socket is #{session_id}"
+      else
+        puts "No session found for this socket".colorize(:red).on(:white)
       end
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
@@ -207,6 +210,10 @@ module Lattice::Connected
         "UNKNOWN".colorize(:white).on(:red)
       end
       Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
+    end
+
+    def self.send(socket, message)
+      socket.send message
     end
 
     def self.on_message(message, socket)

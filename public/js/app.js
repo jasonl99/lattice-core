@@ -19,7 +19,7 @@ function baseEvent(evt,event_action, action_params = {}) {
     // param_attribs.  So if we are sending the elements <div class="myclass">
     final_params[attrname] = action_params[attrname]; 
   }
-  id = event.target.getAttribute("data-item")
+  id = evt.target.getAttribute("data-item")
   msg[id] = {action: event_action, params: final_params}
   return msg
 
@@ -33,6 +33,7 @@ function handleEvent(event_type, el, socket) {
       el.addEventListener("click", function(evt) {
         msg = baseEvent(evt,"click")
         sendEvent(msg,socket)
+        console.log("Clicked!", msg)
         // socket.send(JSON.stringify(msg))
       })
       break;

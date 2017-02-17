@@ -1,4 +1,5 @@
 require "./public_storage"  # this is required early so the files are loaded.
+
 module Lattice::Core
   class Application
 
@@ -16,6 +17,7 @@ module Lattice::Core
     end
 
     def self.run
+      puts "Running kemal"
       Kemal.run
     end
 

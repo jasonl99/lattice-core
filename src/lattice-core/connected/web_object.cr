@@ -154,7 +154,7 @@ module Lattice
         sockets.each do |socket|
           Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
           begin
-            socket.send msg.to_json
+            WebSocket.send socket, msg.to_json
           rescue
             # if we can't send, we can't fix it, so just unsubscribe the user.
             # I've have this happen somewhat regularly when doing a poor-mans load test (i.e., hitting "ctrl-R" as fast as I can
@@ -404,8 +404,12 @@ module Lattice
       # class, not the id.
       def self.javascript(session_id : String, target : _)
         javascript = <<-JS
+        socket_protocol = "ws:"
+        if (location.protocol === 'https:') {
+          socket_protocol = "wss:"
+        }
         session_id = "#{session_id}"
-        #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
+        #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
