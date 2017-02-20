@@ -118,10 +118,12 @@ module Lattice::Connected
       payload = return_val.as(JSON::Any).as_h  # convert to any as a result of &.try
       params = payload.first_value
       dom_item = payload.first_key
+      puts "Registered session_ids: #{REGISTERED_SESSIONS.values}"
       if (session_id = REGISTERED_SESSIONS[socket]?)
         puts "The session for this socket is #{session_id}"
       else
-        puts "No session found for this socket".colorize(:red).on(:white)
+        puts "No session (#{session_id}) found for this socket".colorize(:red).on(:white)
+        puts "#{payload}".colorize(:blue).on(:white)
       end
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
@@ -213,6 +215,11 @@ module Lattice::Connected
 
     def self.close(socket)
       #TODO unsubscribe items
+      puts "Closing socket".colorize(:blue).on(:white)
+      log :process, "Closing socket #{socket.object_id}"
+      REGISTERED_SESSIONS.delete socket
+      WebObject::INSTANCES.values.each &.unsubscribe(socket)
+      User.socket_closing(socket)
       socket.close
     end
     def self.send(socket, message)
@@ -240,7 +247,8 @@ module Lattice::Connected
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
             # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
-            register_session(session_id.as(String), socket) if session_id
+          puts "Params: #{params.inspect}"
+          register_session(session_id.as(String), socket) if session_id
           target.subscribe(socket, session_id.as(String | Nil))
         else
           # FIXME this can now just be a simple call (on_event) in target
@@ -271,11 +279,6 @@ module Lattice::Connected
     # part in as well as from registered sessions.
     # TODO User set socket=nil for this socket
     def self.on_close(socket)
-      puts "Closing socket".colorize(:blue).on(:white)
-      log :process, "Closing socket #{socket.object_id}"
-      User.socket_closed(socket)
-      WebObject::INSTANCES.values.each &.unsubscribe(socket)
-      REGISTERED_SESSIONS.delete socket
     end
 
   end
