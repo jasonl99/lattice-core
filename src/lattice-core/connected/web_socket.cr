@@ -172,6 +172,9 @@ module Lattice::Connected
       check_socket_memory!
       REGISTERED_SESSIONS[socket] = session_id
       log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
+      if (user = User.find?(session_id))
+        user.socket = socket
+      end
     end
 
     def self.check_socket_memory!
@@ -266,9 +269,11 @@ module Lattice::Connected
 
     # when a socket is closed we have to remove it from all of the subscriptions it took 
     # part in as well as from registered sessions.
+    # TODO User set socket=nil for this socket
     def self.on_close(socket)
       puts "Closing socket".colorize(:blue).on(:white)
       log :process, "Closing socket #{socket.object_id}"
+      User.socket_closed(socket)
       WebObject::INSTANCES.values.each &.unsubscribe(socket)
       REGISTERED_SESSIONS.delete socket
     end

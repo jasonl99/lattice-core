@@ -9,6 +9,7 @@ dependencies:
     github: kemalcr/kemal
   kemal-session:
     github: jasonl99/kemal-session
+    branch: session_timeout
     # branch: master
     # path: /home/jason/crystal/kemal-session
   baked_file_system:
