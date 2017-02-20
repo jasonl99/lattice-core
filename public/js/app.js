@@ -152,6 +152,10 @@ function handleSocketMessage(message) {
     takeAction(payload.act);
   }
 
+  if ("error" in payload) {
+    console.log("Server Reports Error: ", payload.error)
+    alert(payload.error)
+  }
 }
 
 function takeAction(domData) {

@@ -1,8 +1,7 @@
 module Lattice::Connected
 
 
-  class TooManySessions < Exception
-  end
+  class TooManySessions < Exception; end
 
   # A cohort of WebObject used to create a client-server connection between a server-hosted
   # object (WebObject) and a client DOM-representation of that object.  To make the
@@ -120,9 +119,6 @@ module Lattice::Connected
       params = payload.first_value
       dom_item = payload.first_key
       if (session_id = REGISTERED_SESSIONS[socket]?)
-        # if (session = Session.get session_id)
-        #   puts "The user on this session is #{session.string?("name")}"
-        # end
         puts "The session for this socket is #{session_id}"
       else
         puts "No session found for this socket".colorize(:red).on(:white)
@@ -212,11 +208,17 @@ module Lattice::Connected
       Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
     end
 
+    def self.close(socket)
+      #TODO unsubscribe items
+      socket.close
+    end
     def self.send(socket, message)
+      # TODO touch session to prevent expiration
       socket.send message
     end
 
     def self.on_message(message, socket)
+      # TODO touch session to prevent expiration
 
       unless (payload = validate_payload(message, socket))
         puts "No payload for #{message}"
@@ -227,7 +229,6 @@ module Lattice::Connected
 
       log :in, "message: #message} from socket #{socket.object_id}"
 
-
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
         params = payload["params"].as(Hash(String,JSON::Type))
@@ -235,34 +236,38 @@ module Lattice::Connected
           # in this case, the session_id isn't established yet, but it is in the params as session_id.
           # which came directlry from the browser (we haven't tied the two together yet
           session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
-          # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
-          register_session(session_id.as(String), socket) if session_id
+            # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
+            register_session(session_id.as(String), socket) if session_id
           target.subscribe(socket, session_id.as(String | Nil))
         else
           # FIXME this can now just be a simple call (on_event) in target
           session_id = payload["session_id"]?
-          #OPTIMIZE: what if by default an item subscribed to its own events, so it comes in on_event
-          # FIXME all objects in projects that use subscriber action need to now use on_event
-          # target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket, direction: "In"
-          target.emit_event DefaultEvent.new(
-            event_type: "subscriber",
-            sender: target,
-            dom_item: payload["dom_item"].as(String),
-            message: params,
-            session_id: session_id.as(String|Nil),
-            socket: socket,
-            direction: "In")
-
-          #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
+            if session_id
+              target.emit_event DefaultEvent.new(
+                event_type: "subscriber",
+                sender: target,
+                dom_item: payload["dom_item"].as(String),
+                message: params,
+                session_id: session_id.as(String|Nil),
+                socket: socket,
+                direction: "In")
+          else # session timed out, we can't allow messages.
+            #tod send event with event_emitter
+            socket.send({"error"=>"Invalid session"}.to_json)
+            close socket
+            return
+          end
         end
       end
-
     end
+
+      #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
+
 
     # when a socket is closed we have to remove it from all of the subscriptions it took 
     # part in as well as from registered sessions.
     def self.on_close(socket)
+      puts "Closing socket".colorize(:blue).on(:white)
       log :process, "Closing socket #{socket.object_id}"
       WebObject::INSTANCES.values.each &.unsubscribe(socket)
       REGISTERED_SESSIONS.delete socket

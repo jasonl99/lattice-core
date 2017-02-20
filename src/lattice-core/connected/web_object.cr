@@ -426,6 +426,9 @@ module Lattice
             }
 
         };
+        #{js_var}.onclose = function(evt) {
+          console.log("Connected Socket closed", evt)
+          }
 
         connectEvents(#{js_var});
 
