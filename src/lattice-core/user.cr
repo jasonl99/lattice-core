@@ -52,7 +52,7 @@ module Lattice
       return unless @socket
       on_socket_close
       # @socket.as(HTTP::WebSocket).close
-      # @socket = nil
+      @socket = nil
     end
 
     def on_socket_close
@@ -65,6 +65,7 @@ module Lattice
         puts "Calling timeout for #{user}"
         if (socket = user.socket)
           puts "Calling WebSocket.close".colorize(:dark_gray).on(:white)
+          user.close_socket
           Connected::WebSocket.close(socket) 
         end
         user.timeout

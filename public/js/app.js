@@ -195,6 +195,7 @@ function addSubscribers(el, socket = connected_object) {
     id = connected[i].getAttribute("data-item")
     if (id.split("-").length == 2) {
       msg = {}
+      msg[ id ] = {action:"subscribe", params: {}}
       socket.send(JSON.stringify(msg))
     }
   }
