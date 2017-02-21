@@ -141,7 +141,7 @@ function connectEvents(socket) {
 
 
 // handle an incoming message over the socket
-function handleSocketMessage(message) {
+function handleSocketMessage(message, evt) {
   payload = JSON.parse(message);
   if ("dom" in payload) {
     console.log("ServerClient Dom: ", payload.dom)
@@ -151,10 +151,13 @@ function handleSocketMessage(message) {
     console.log("ServerClient Act: ", payload.act)
     takeAction(payload.act);
   }
-
   if ("error" in payload) {
     console.log("Server Reports Error: ", payload.error)
     alert(payload.error)
+  }
+  if ("close" in payload) {
+    console.log("Session closing", evt)
+    evt.target.close()
   }
 }
 

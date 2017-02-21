@@ -215,17 +215,30 @@ module Lattice::Connected
 
     def self.close(socket)
       #TODO unsubscribe items
-      puts "Closing socket".colorize(:blue).on(:white)
+      # puts "Closing socket".colorize(:blue).on(:white)
       log :process, "Closing socket #{socket.object_id}"
+      socket.send({"close"=>{"message"=>"server closed socket"}}.to_json)
+      WebObject::INSTANCES.values.each do |web_object|
+        puts "Unsubscribing from #{web_object.name}"
+        web_object.unsubscribe(socket)
+      end
       REGISTERED_SESSIONS.delete socket
-      WebObject::INSTANCES.values.each &.unsubscribe(socket)
       User.socket_closing(socket)
       socket.close
     end
-    def self.send(socket, message)
-      # TODO touch session to prevent expiration
-      socket.send message
+
+    def self.send(sockets : Array(HTTP::WebSocket), msg)
+      sockets.each do |socket|
+        socket.send(msg) unless socket.closed?
+      end
     end
+
+    # def self.send(socket, message)
+    #   # TODO touch session to prevent expiration
+    #   socket.send message unless CLOSING_SOCKETS.includes?(socket)
+    # rescue ex
+    #   puts "#{ex.message} sending socket message".colorize(:red)
+    # end
 
     def self.on_message(message, socket)
       # TODO touch session to prevent expiration
@@ -279,6 +292,7 @@ module Lattice::Connected
     # part in as well as from registered sessions.
     # TODO User set socket=nil for this socket
     def self.on_close(socket)
+      puts "Socket closed"
     end
 
   end

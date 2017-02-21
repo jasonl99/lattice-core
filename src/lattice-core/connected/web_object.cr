@@ -150,18 +150,7 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        bad_sockets = [] of HTTP::WebSocket
-        sockets.each do |socket|
-          Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
-          begin
-            WebSocket.send socket, msg.to_json
-          rescue
-            # if we can't send, we can't fix it, so just unsubscribe the user.
-            # I've have this happen somewhat regularly when doing a poor-mans load test (i.e., hitting "ctrl-R" as fast as I can
-            bad_sockets << socket
-          end
-        end
-        bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
+        WebSocket.send sockets, msg.to_json
 
         # puts "Message sent: #{msg}"
         emit_event DefaultEvent.new(
@@ -290,9 +279,8 @@ module Lattice
       end
 
       # delete a subscription for _socket_
-      #TODO create an event for unsubscribe?
       def unsubscribe( socket : HTTP::WebSocket)
-        subscribers.delete(socket)
+        @subscribers.delete(socket)
         unsubscribed socket
 
         #event is emitted after unsubbing, or it will try to send it to the socket that is in flux
@@ -410,7 +398,7 @@ module Lattice
         }
         session_id = "#{session_id}"
         #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
-        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
+        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
             subs = document.querySelectorAll("[data-item]")
