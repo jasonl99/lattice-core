@@ -1,3 +1,23 @@
+# Version 0.15
+
+More significant changes.  
+
+### Lattice::User
+
+This new class is now used to completely abstract sessions and sockets away from the app.    This class has a timeout method that is called when a session expires, and handles a socket connection.  The [a card game Player](https://github.com/jasonl99/card_game/blob/user_class/src/card_game/player.cr) is a good place to see how this works.
+
+### Lattice::Connected
+
+Various changes to WebSocket, WebObject and events to remove references to sockets and sessions, and instead include the new User as part of the message. 
+
+
+
+### PLEASE NOTE
+
+There is a bug in the LLVM compiler version less than 3.8(?) that causes Digest::SHA1.digest("some string") to return data inconsistently when building an app with `--release`.  This is used in lattice to create a signature for the dom_id.   This means that a --release build will not correctly connect dom_ids.
+
+
+
 # Version 0.12
 
 ### Changes

@@ -17,7 +17,8 @@ module Lattice::Core
       @@socket_path = path
       ws(path) do |socket, ctx|
         session = Session.new(ctx)
-        user = user_class.new(session, socket)
+        user = user_class.find_or_create(session.id)
+        user.socket = socket unless user.socket
 
         socket.on_message do |message| 
           Lattice::Connected::WebSocket.on_message(message, socket, user)
@@ -25,8 +26,10 @@ module Lattice::Core
 
         socket.on_close do
           # Pass on notification of socket so we can handle it 
+          puts "Application route_socket socket.on_close called"
           Lattice::Connected::WebSocket.on_close(socket, user)
         end
+
       end
     end
 

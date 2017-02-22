@@ -6,7 +6,7 @@ module Lattice
     ACTIVE_USERS = {} of String=>self
 
     @session : Session?
-    getter socket : HTTP::WebSocket?
+    property socket : HTTP::WebSocket?
     property last_activity = Time.now
     @subscriptions = [] of Connected::WebObject
 
@@ -66,6 +66,7 @@ module Lattice
       end
     end
 
+    # basically sets @socket to nil so it can be gc'ed by Crystal
     def close_socket
       puts "user #{self} close_socket called".colorize(:dark_gray).on(:white)
       return unless @socket
@@ -86,6 +87,7 @@ module Lattice
       puts "Session timeout for session id #{id}".colorize(:dark_gray).on(:white)
       if (user = find? id)
         puts "Calling timeout for #{user}"
+        puts "user.socket: #{user.socket}"
         if (socket = user.socket)
           puts "Calling WebSocket.close".colorize(:dark_gray).on(:white)
           user.close_socket

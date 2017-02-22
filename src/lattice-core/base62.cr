@@ -20,17 +20,14 @@ class Base62
   def self.int_digest( target : String) : UInt64
       sha_digest = Digest::SHA1.digest target
     	sd = shorten_digest(sha_digest)
-      puts "Calculating int_digest for #{target} with sd #{sd}".colorize(:blue).on(:white)
       return sd
 	end
 
 
   def self.shorten_digest( digest : StaticArray(UInt8,20))
-    puts "All values: #{digest}".colorize(:blue).on(:white)
     values = digest.first(8).map_with_index do | unit, index |
       index == 0 ? unit : (BASE ** index) * unit
     end	
-    puts "Values: #{values}".colorize(:blue).on(:white)
     values.sum
   end
 
