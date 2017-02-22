@@ -7,6 +7,7 @@ module Lattice
     class TooManyInstances < Exception
     end
 
+    #TODO events need to abstract away session and web_socket stuff into Lattice::User
     abstract class WebObject
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
@@ -79,8 +80,10 @@ module Lattice
       def self.add_instance( instance : WebObject)
         # puts "#{instance.class} #{instance.name} signature #{instance.signature}"
         # puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
-        INSTANCES[Base62.int_digest instance.signature] = instance
-        @@instances[instance.name] = Base62.int_digest instance.signature
+        base62_digest = Base62.int_digest(instance.signature)
+        INSTANCES[base62_digest] = instance
+        @@instances[instance.name] = base62_digest 
+        puts "Added #{instance.name} with signature: #{instance.signature} digest: #{base62_digest} to #{self} INSTANCES and @@instances"
       end
 
       # Use Base62.string_digest
@@ -150,18 +153,8 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        bad_sockets = [] of HTTP::WebSocket
-        sockets.each do |socket|
-          Connected.log :out, "Sending #{msg} to socket #{socket.object_id}"
-          begin
-            socket.send msg.to_json
-          rescue
-            # if we can't send, we can't fix it, so just unsubscribe the user.
-            # I've have this happen somewhat regularly when doing a poor-mans load test (i.e., hitting "ctrl-R" as fast as I can
-            bad_sockets << socket
-          end
-        end
-        bad_sockets.each {|sock| sock.close; subscribers.delete sock; WebSocket::REGISTERED_SESSIONS.delete sock}  # calling unsubscribe causes errors
+        puts "Sending message for #{self.name} to #{sockets.size} sockets".colorize(:green).on(:white)
+        WebSocket.send sockets, msg.to_json
 
         # puts "Message sent: #{msg}"
         emit_event DefaultEvent.new(
@@ -169,8 +162,8 @@ module Lattice
           sender: self,
           dom_item: dom_id,
           message: msg,
-          session_id: nil,
-          socket: nil,
+          # session_id: nil,
+          # socket: nil,
           direction: "Out")
       end
 
@@ -290,21 +283,20 @@ module Lattice
       end
 
       # delete a subscription for _socket_
-      #TODO create an event for unsubscribe?
       def unsubscribe( socket : HTTP::WebSocket)
-        subscribers.delete(socket)
+        @subscribers.delete(socket)
         unsubscribed socket
 
         #event is emitted after unsubbing, or it will try to send it to the socket that is in flux
-        emit_event DefaultEvent.new(
-          event_type: "unsubscribe",
-          sender: self,
-          dom_item: dom_id,
-          message: nil,
-          session_id: nil,  #TODO we can get the session id from the socket.
-          socket: nil,      #It might be useful to pass this on so further cleanup can be done.
-          direction: "In"
-        )
+        # emit_event DefaultEvent.new(
+        #   event_type: "unsubscribe",
+        #   sender: self,
+        #   dom_item: dom_id,
+        #   message: nil,
+        #   session_id: nil,  #TODO we can get the session id from the socket.
+        #   socket: nil,      #It might be useful to pass this on so further cleanup can be done.
+        #   direction: "In"
+        # )
       end
 
       # this socket is now unsubscribed from this object
@@ -314,8 +306,9 @@ module Lattice
       # Called during page rendering prep as a spinup for an object.  Instantiate a new 
       # object (if requested), return the javascript and object for rendering.
       def self.preload(name : String, session_id : String, create = true)
-        if (existing = @@instances.fetch(name,nil))
-          target = INSTANCES[existing]
+        if (existing = @@instances.fetch(name,nil)) && (target = INSTANCES[existing]?)
+          puts "existing instance found for #{name} with #{existing}"
+          # target = INSTANCES[existing]
         else
           target = new(name)
         end
@@ -364,7 +357,9 @@ module Lattice
           # by multiple people or that require frequent updates) the default is to use
           # the classname-signature as a dom_id.  The signature is something that is sufficiently
           # random that we can quickly determine if an object is "real".
+          puts "Attempting to find object from #{klass}, #{signature}"
           if (obj = from_signature(signature))
+            puts "Found #{obj.class}: #{obj.name}"
             return obj if obj.class.to_s.split("::").last == klass
           end
         end
@@ -389,8 +384,13 @@ module Lattice
         # puts signature.inspect
         # puts Base62.int_digest signature
         # puts "Instance sigs: #{INSTANCES.values.map &.signature}"
-        if ( instance = INSTANCES[Base62.int_digest signature]? )
+        base62_signature = Base62.int_digest(signature)
+        puts "Converting signature #{signature} to base62: #{base62_signature}"
+        if ( instance = INSTANCES[base62_signature]? )
+          puts "found instance"
           return instance
+        else
+          puts "could not find instance".colorize(:red)
         end
       end
 
@@ -404,26 +404,25 @@ module Lattice
       # class, not the id.
       def self.javascript(session_id : String, target : _)
         javascript = <<-JS
-        session_id = "#{session_id}"
-        #{js_var} = new WebSocket("ws:" + location.host + "/connected_object");
-        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data) };
+        socket_protocol = "ws:"
+        if (location.protocol === 'https:') {
+          socket_protocol = "wss:"
+        }
+        sessionID = "#{session_id}"
+        #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
+        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
         #{js_var}.onopen = function(evt) {
             // on connection of this socket, send subscriber requests
-            subs = document.querySelectorAll("[data-item]")
-            for (var i=0;i<subs.length;i++){
-              msg = {}
-              id = subs[i].getAttribute("data-item")
-              console.log("Checking " + id)
-              if ( id.split("-").length == 2 ) {
-                msg[ id ] = {action:"subscribe",params: {session_id:"#{session_id}"}}
-                console.log("subscribing",msg)
-                evt.target.send(JSON.stringify(msg))
-               }
-            }
-
+            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
+            el = document.querySelector("body")
+            addSubscribers(el, self.target)
+            addListeners(el,self.target)
         };
+        #{js_var}.onclose = function(evt) {
+          console.log("Connected Socket closed", evt)
+          }
+        // connectevents(#{js_var});
 
-        connectEvents(#{js_var});
 
         JS
       end

@@ -1,8 +1,7 @@
 module Lattice::Connected
 
 
-  class TooManySessions < Exception
-  end
+  class TooManySessions < Exception; end
 
   # A cohort of WebObject used to create a client-server connection between a server-hosted
   # object (WebObject) and a client DOM-representation of that object.  To make the
@@ -61,7 +60,7 @@ module Lattice::Connected
     # VALID_ACTIONS = %w(subscribe click input mouse submit)
 
     @@max_sessions = 100_000 # I have absolutely no idea what this number and or should be.
-    REGISTERED_SESSIONS = {} of HTTP::WebSocket=>String
+    # REGISTERED_SESSIONS = {} of HTTP::WebSocket=>String
 
     # FIXME!! This needs to be drastically improved (the validated payload)
     alias ValidatedPayload = Hash(String, Array(JSON::Type) | Bool | Float64 | Hash(String, JSON::Type) | Int64 | Lattice::Connected::WebObject | String | Nil)
@@ -108,7 +107,7 @@ module Lattice::Connected
     #   "target"      => #<CardGame::CardGame:0x56097059bf00>,
     #   "params"      => { "src":"/images/ace_of_clubs.png" }
     # }
-    def self.validate_payload(message : String, socket : HTTP::WebSocket )
+    def self.validate_payload(message : String, socket : HTTP::WebSocket, user : Lattice::User)
       begin
         return_val = JSON.parse(message)
       rescue
@@ -119,19 +118,44 @@ module Lattice::Connected
       payload = return_val.as(JSON::Any).as_h  # convert to any as a result of &.try
       params = payload.first_value
       dom_item = payload.first_key
-      if (session_id = REGISTERED_SESSIONS[socket]?)
-        # if (session = Session.get session_id)
-        #   puts "The user on this session is #{session.string?("name")}"
-        # end
+      #puts "Registered session_ids: #{REGISTERED_SESSIONS.values}"
+      #TODO there are cases where multiple sockets are open with the same session id"
+      # if (session_id = REGISTERED_SESSIONS[socket]?)
+      #   puts "The session for this socket is #{session_id}"
+      #   # check_other_sessions(session_id, socket)
+      # elsif dom_item == "session_id" 
+      #   puts "session registering"
+      #   session_id = params.as(String)
+      #   # register_session(session_id: session_id, socket: socket)
+      # else
+      #   puts "No session (#{session_id}) found for this socket".colorize(:red).on(:white)
+      #   puts "#{payload}".colorize(:blue).on(:white)
+      # end
+      unless user.session  # A user cannot be without a session
+        raise "user does not have a session, therefore, cannot tie message to user"
+      else
+        session = user.session.as(Session)
       end
+      puts "attempting to find object from dom_item #{dom_item}"
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
         #   puts "The socket is subscribed to the target"
         # end
       end
-      result = {"dom_item"=>dom_item, "session_id"=>session_id, "target": target, "params"=>params}
+      result = {"dom_item"=>dom_item, "session_id"=>session.id, "target": target, "params"=>params}
+      tgt_dom_id = target.as(WebObject).dom_id if target
+      puts "dom_item: #{dom_item} / session_id: #{session.id} / params: #{params} / target.dom_id: #{tgt_dom_id}"
       raise "Too many actions" unless payload.keys.size == 1
       result
+    end
+
+    def self.check_other_sessions(good_session : String, socket : HTTP::WebSocket)
+      other = REGISTERED_SESSIONS.select {|sock, sess| sess == good_session }
+      other.each do |sock, sess|
+        puts "Session #{sess} has this socket #{sock.object_id} "
+        # sock.send({"debug"=>"Are you from Omaha?"}.to_json)
+        # sock.close
+      end
     end
 
     # Given a session_id, return true if the Session instance is valid
@@ -169,17 +193,20 @@ module Lattice::Connected
     # each socket's object_id is used as they key, and the session's id as the value.  This
     # makes it trivial to find a session by a socket.
     # in this case we simply set the value, overwriting any that may be present
-    def self.register_session(session_id : String, socket : HTTP::WebSocket)
-      check_socket_memory!
-      REGISTERED_SESSIONS[socket] = session_id
-      log :in, "Registered session_id #{session_id} to socket #{socket.object_id}"
-    end
+    # def self.register_session(session_id : String, socket : HTTP::WebSocket)
+    #   check_socket_memory!
+    #   puts "Socket object_ids #{REGISTERED_SESSIONS.keys.map &.object_id}"
+    #   REGISTERED_SESSIONS[socket] = session_id
+    #   if (user = User.find?(session_id))
+    #     user.socket = socket
+    #   end
+    # end
 
-    def self.check_socket_memory!
-      if REGISTERED_SESSIONS.size >= @@max_sessions
-        raise TooManySessions.new("WebSocket Error: Maximum number of sessions exceeded.  Current @@max_sessions allowed is #{@@max_sessions}")
-      end
-    end
+    # def self.check_socket_memory!
+    #   if REGISTERED_SESSIONS.size >= @@max_sessions
+    #     raise TooManySessions.new("WebSocket Error: Maximum number of sessions exceeded.  Current @@max_sessions allowed is #{@@max_sessions}")
+    #   end
+    # end
 
 
     # OPTIMIZE this should also be used by extract_ids
@@ -209,9 +236,51 @@ module Lattice::Connected
       Lattice::Connected::SOCKET_LOGGER.info "#{colorized_indicator} #{message}"
     end
 
-    def self.on_message(message, socket)
+    def self.close(socket)
+      #TODO unsubscribe items
+      # puts "Closing socket".colorize(:blue).on(:white)
+      # socket.send({"close"=>{"message"=>"server closed socket"}}.to_json)
 
-      unless (payload = validate_payload(message, socket))
+     socket.close  # this causes the following error
+      WebObject::INSTANCES.values.each do |web_object|
+        puts "Unsubscribing from #{web_object.name}"
+        web_object.unsubscribe(socket)
+      end
+
+      # REGISTERED_SESSIONS.delete socket
+      User.socket_closing(socket)
+       # Unhandled exception in spawn:
+      # SSL_write: Unexpected EOF (OpenSSL::SSL::Error)
+      # 0x55d626495e1e: ??? at /home/jason/.cache/crystal/macro57287184.cr 10:28
+      # 0x55d626488765: ??? at /opt/crystal/src/http/web_socket/protocol.cr 134:12
+      # 0x55d6265a4c60: ??? at /opt/crystal/src/http/web_socket/protocol.cr 100:3
+      # 0x55d6265a6024: ??? at /home/jason/crystal/card_game/lib/lattice-core/src/lattice-core/user.cr 68:11
+      # 0x55d6264ffcca: ??? at /home/jason/crystal/card_game/lib/kemal-session/src/kemal-session/config.cr 42:3
+
+    end
+
+    def self.send(sockets : Array(HTTP::WebSocket), msg)
+      sockets.each do |socket|
+        socket.send(msg) unless socket.closed?
+      end
+    end
+
+    # def self.send(socket, message)
+    #   # TODO touch session to prevent expiration
+    #   socket.send message unless CLOSING_SOCKETS.includes?(socket)
+    # rescue ex
+    #   puts "#{ex.message} sending socket message".colorize(:red)
+    # end
+
+    def self.on_message(message : String, socket : HTTP::WebSocket, user : Lattice::User)
+
+      # if (session = user.session)
+      #   session = session.as(Session)
+      #   puts "Socket message received from user #{user}.  user.session.id is #{session.id}".colorize(:blue)
+      # end
+      # TODO touch session to prevent expiration
+
+      unless (payload = validate_payload(message, socket, user))
         puts "No payload for #{message}"
         return
       else
@@ -220,46 +289,40 @@ module Lattice::Connected
 
       log :in, "message: #message} from socket #{socket.object_id}"
 
-
       if (target = payload["target"]?)
         target = target.as(Lattice::Connected::WebObject)
         params = payload["params"].as(Hash(String,JSON::Type))
         if params["action"] == "subscribe"
-          # in this case, the session_id isn't established yet, but it is in the params as session_id.
-          # which came directlry from the browser (we haven't tied the two together yet
-          session_id = params["params"].as(Hash(String,JSON::Type))["session_id"]?
-          # REGISTERED_SESSIONS[socket.object_id] = session_id.as(String) if session_id
-          register_session(session_id.as(String), socket) if session_id
-          target.subscribe(socket, session_id.as(String | Nil))
+          target.subscribe(socket, user.session.id)
         else
-          # FIXME this can now just be a simple call (on_event) in target
-          session_id = payload["session_id"]?
-          #OPTIMIZE: what if by default an item subscribed to its own events, so it comes in on_event
-          # FIXME all objects in projects that use subscriber action need to now use on_event
-          # target.subscriber_action(payload["dom_item"].as(String), params, session_id.as(String | Nil), socket) if target.subscribed?(socket)
-          # target.notify_observers payload["dom_item"].as(String), params, session_id.as(String | Nil), socket, direction: "In"
           target.emit_event DefaultEvent.new(
             event_type: "subscriber",
+            user: user,
             sender: target,
             dom_item: payload["dom_item"].as(String),
             message: params,
-            session_id: session_id.as(String|Nil),
-            socket: socket,
+            # session_id: user.session.id,  #OPTIMIZE: We should start passing user here.
+            # socket: socket,
             direction: "In")
-
-          #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
         end
       end
-
     end
+
+      #target.observers.each {|observer| observer.observe target, payload["dom_item"].as(String), params, session_id.as(String | Nil), socket}
+
 
     # when a socket is closed we have to remove it from all of the subscriptions it took 
     # part in as well as from registered sessions.
-    def self.on_close(socket)
-      log :process, "Closing socket #{socket.object_id}"
-      WebObject::INSTANCES.values.each &.unsubscribe(socket)
-      REGISTERED_SESSIONS.delete socket
-    end
+    # TODO User set socket=nil for this socket
+    def self.on_close(socket : HTTP::WebSocket, user : Lattice::User)
+      puts "Socket closed for user #{user}"
+      # REGISTERED_SESSIONS.delete socket
+      WebObject::INSTANCES.values.each do |web_object|
+        puts "Unsubscribing from #{web_object.name}"
+        web_object.unsubscribe(socket)
+      end
+      User.socket_closing(socket)
+     end
 
   end
 end

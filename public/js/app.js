@@ -19,7 +19,7 @@ function baseEvent(evt,event_action, action_params = {}) {
     // param_attribs.  So if we are sending the elements <div class="myclass">
     final_params[attrname] = action_params[attrname]; 
   }
-  id = event.target.getAttribute("data-item")
+  id = evt.target.getAttribute("data-item")
   msg[id] = {action: event_action, params: final_params}
   return msg
 
@@ -33,6 +33,7 @@ function handleEvent(event_type, el, socket) {
       el.addEventListener("click", function(evt) {
         msg = baseEvent(evt,"click")
         sendEvent(msg,socket)
+        console.log("Clicked!", msg)
         // socket.send(JSON.stringify(msg))
       })
       break;
@@ -140,7 +141,7 @@ function connectEvents(socket) {
 
 
 // handle an incoming message over the socket
-function handleSocketMessage(message) {
+function handleSocketMessage(message, evt) {
   payload = JSON.parse(message);
   if ("dom" in payload) {
     console.log("ServerClient Dom: ", payload.dom)
@@ -150,7 +151,14 @@ function handleSocketMessage(message) {
     console.log("ServerClient Act: ", payload.act)
     takeAction(payload.act);
   }
-
+  if ("error" in payload) {
+    console.log("Server Reports Error: ", payload.error)
+    alert(payload.error)
+  }
+  if ("close" in payload) {
+    console.log("Session closing", evt)
+    evt.target.close()
+  }
 }
 
 function takeAction(domData) {
@@ -187,6 +195,7 @@ function addSubscribers(el, socket = connected_object) {
     id = connected[i].getAttribute("data-item")
     if (id.split("-").length == 2) {
       msg = {}
+      msg[ id ] = {action:"subscribe", params: {}}
       socket.send(JSON.stringify(msg))
     }
   }
