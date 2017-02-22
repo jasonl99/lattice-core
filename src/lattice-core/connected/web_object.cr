@@ -7,6 +7,7 @@ module Lattice
     class TooManyInstances < Exception
     end
 
+    #TODO events need to abstract away session and web_socket stuff into Lattice::User
     abstract class WebObject
       # OPTIMIZE it would be better to have a #self.all_instances that goes through @@instances of subclasses
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
@@ -152,6 +153,7 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
+        puts "Sending message for #{self.name} to #{sockets.size} sockets".colorize(:green).on(:white)
         WebSocket.send sockets, msg.to_json
 
         # puts "Message sent: #{msg}"
@@ -160,8 +162,8 @@ module Lattice
           sender: self,
           dom_item: dom_id,
           message: msg,
-          session_id: nil,
-          socket: nil,
+          # session_id: nil,
+          # socket: nil,
           direction: "Out")
       end
 

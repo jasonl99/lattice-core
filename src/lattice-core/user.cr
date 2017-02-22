@@ -3,23 +3,35 @@ module Lattice
   class UserException < Exception; end
   abstract class User
 
-    #FIXME - We might want a REGISTERED_USERS that tie a user to a session
-    # the same way is done with REGISTERED_SESSIONS in WebSocket
-    
-    # optimize - would it be ok to just have an array of users, and
-    # use #find to get the session (which can be searched for id)
-
     ACTIVE_USERS = {} of String=>self
-    # REGISTERED_SESSIONS = {} of HTTP::WebSocket=>String
 
     @session : Session?
     getter socket : HTTP::WebSocket?
     property last_activity = Time.now
-
     @subscriptions = [] of Connected::WebObject
 
-    # commenting out timeout to see if this is the cause of the SSL ZERO thing
     Session.timeout {|id| self.timeout(id)} 
+
+    def initialize(@session : Session, @socket : HTTP::WebSocket)
+      load
+    end
+
+    def initialize(@session : Session)
+      load
+    end
+
+    def initialize(session_id : String = nil)
+      if session_id && (session = Session.get(session_id))
+        session = session.as(Session)
+        @session = session
+        ACTIVE_USERS[session.id] = self
+        load
+      else
+        # the user will be created, but not persisted (it won't be added to ACTIVE_USERS
+        # but any attempt to access things inside the session will cause an exception
+      end
+      self
+    end
 
     def self.find_or_create(session_id : String)
       user = find?(session_id) || new(session_id)
@@ -31,8 +43,15 @@ module Lattice
     def self.find?(session_id : String?)
       if session_id && ( u = ACTIVE_USERS[session_id]?)
         u.last_activity = Time.now
+        u.as(self)
       end
-      u
+    end
+
+
+    def session
+      @session.as(Session)
+    rescue
+      raise UserException.new "Attempt to access a nil @session in #{self.class}."
     end
 
     def socket=(socket : HTTP::WebSocket)
@@ -59,6 +78,10 @@ module Lattice
       puts "Remove subscriptions.  Socket closing for this #{self}"
     end
 
+    # called by #self.timeout when the given id has expired
+    def timeout
+    end
+  
     def self.timeout(id : String)
       puts "Session timeout for session id #{id}".colorize(:dark_gray).on(:white)
       if (user = find? id)
@@ -75,25 +98,8 @@ module Lattice
     end
 
 
+    abstract def save : self
     abstract def load : self
-
-
-    def initialize(@session : Session)
-      # prepare
-    end
-
-    def initialize(session_id : String = nil)
-      if session_id && (session = Session.get(session_id))
-        session = session.as(Session)
-        @session = session
-        ACTIVE_USERS[session.id] = self
-        load
-      # else
-      #   raise UserException.new "Invalid session_id '#{session_id}'"
-      end
-      self
-    end
-
 
   end
 end

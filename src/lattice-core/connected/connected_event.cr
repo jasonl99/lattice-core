@@ -4,13 +4,15 @@ module Lattice
     abstract class ConnectedEvent
       property event_type : String?
       property sender : Lattice::Connected::WebObject
+      property user : Lattice::User?
       property dom_item : String
       property message : Nil | ConnectedMessage | Hash(String,Hash(String,String))
-      property session_id : String?
-      property socket : HTTP::WebSocket?
+      # property session_id : String?
+      # property socket : HTTP::WebSocket?
       property direction : String
       property event_time = Time.now
-      def initialize(@sender, @dom_item, @message, @session_id, @socket, @direction, @event_type = nil)
+
+      def initialize(@sender, @dom_item, @message, @direction, @event_type = nil, @user = nil)
       end
 
       def message_value(path : String?, dig_object = @message, result=[] of JSON::Type, nodes=path.split(","), key_count = nodes.size)
