@@ -10,6 +10,7 @@ dependencies:
     branch: next
   kemal-session:
     github: jasonl99/kemal-session
+    branch: master
     # branch: session_timeout
     # branch: master
     # path: /home/jason/crystal/kemal-session
