@@ -17,6 +17,7 @@ module Lattice::Core
       @@socket_path = path
       ws(path) do |socket, ctx|
         session = Session.new(ctx)
+        session.string("init","true")
         user = user_class.find_or_create(session.id)
         user.socket = socket unless user.socket
 

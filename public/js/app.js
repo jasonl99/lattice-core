@@ -170,7 +170,7 @@ function takeAction(domData) {
       }
     }
   } else {
-      console.log("cound not locate element " + domData.id)
+      console.log("could not locate element " + domData.id)
   }
 }
 
@@ -229,7 +229,7 @@ function modifyDOM(domData) {
         case "insert":
           el.insertAdjacentHTML('beforeend',domData.value)
           el.scrollTop = el.scrollHeight;
-          if (maxChildren = el.getAttribute("data-maxChildren")) {
+          if (maxChildren = el.getAttribute("data-max-children")) {
             children = el.children
             while (children.length > 0 && children.length > maxChildren) {
               el.removeChild(children[0])
