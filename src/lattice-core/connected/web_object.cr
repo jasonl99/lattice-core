@@ -262,10 +262,17 @@ module Lattice
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
       # the other end of the endpoint is the user's browser.  Since each browser does it, it's 
       # a one-to-many relationship (one server object to many browser sockets).
+      # TODO a User should be subscribing.
       def subscribe( socket : HTTP::WebSocket , session_id : String?)
         unless subscribers.includes? socket
           subscribers << socket
-          subscribed session_id, socket if session_id
+          # notify of a user subscribption first, but then of a socket/session
+          # if user not found
+          if session_id && (user = User.find?(session_id) )
+            subscribed(user)
+          else
+            subscribed session_id, socket if session_id
+          end
           # update({"id"=>dom_id, "value"=>content}, [socket]) if auto_add_content
         else
           # if things are working correctly, we shouldn't ever see this.
@@ -275,6 +282,9 @@ module Lattice
 
       # this session and socket are now subscribed to this object
       def subscribed( session_id : String, socket : HTTP::WebSocket)
+      end
+
+      def subscribed( user : Lattice::User )
       end
 
       # tests if a socket is subscribed
@@ -411,17 +421,21 @@ module Lattice
         sessionID = "#{session_id}"
         #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
-        #{js_var}.onopen = function(evt) {
-            // on connection of this socket, send subscriber requests
-            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
-            el = document.querySelector("body")
-            addSubscribers(el, self.target)
-            addListeners(el,self.target)
-        };
         #{js_var}.onclose = function(evt) {
           console.log("Connected Socket closed", evt)
           }
-        // connectevents(#{js_var});
+        document.addEventListener("DOMContentLoaded", function(evt) {
+        #{js_var}.onopen = function(evt) {
+            // on connection of this socket, send subscriber requests
+            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
+            console.log("Socket connecting, configuring for updates..")
+            addSubscribers(document.querySelector("body"), self.target)
+            connectEvents()
+            // el = document.querySelector("body")
+            // addListeners(el,self.target)
+            };
+
+         })
 
 
         JS

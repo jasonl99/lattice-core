@@ -15,9 +15,15 @@ module Lattice
         super(@name, @creator)
       end
 
-      def subscribed(session, socket)
-        puts "ObjectList (#{self.name}) subscribed"
-        send_max = {"id"=>items_dom_id || dom_id,"attribute"=>"data-maxChildren","value"=>@max_items.to_s}
+      def subscribed( user : Lattice::User )
+        if (socket = user.socket)
+          subscribed(socket)
+        end
+      end
+
+      def subscribed(socket)
+        puts "ObjectList (#{self.name}) subscribed sending max-children #{@max_items}"
+        send_max = {"id"=>items_dom_id || dom_id,"attribute"=>"data-max-children","value"=>@max_items.to_s}
         self.as(WebObject).update_attribute(send_max, [socket])
       end
 
