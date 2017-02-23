@@ -6,6 +6,10 @@ require "logger"
 require "kilt/slang"
 require "./lattice-core/*"
 
+{% if Crystal::VERSION == "0.21.0" %}
+  puts "Crystal version: #{Crystal::VERSION}"
+  require "./lattice-core/hotfixes/gzip_header"
+{% end  %}
 
 # Session.destroy(id) do
 #   puts "Session #{id} is about to be destroyed!".colorize(:red).on(:white)
