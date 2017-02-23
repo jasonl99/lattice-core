@@ -62,6 +62,7 @@ function handleEvent(event_type, el, socket) {
         evt.preventDefault();
         evt.stopPropagation();
         msg = baseEvent(evt, "submit", formToJSON(el))
+        console.log("Submitting:", msg)
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
         el.reset();  //TODO This is just a quick method of clearing the form for now
@@ -117,28 +118,23 @@ function connectElements(el, socket) {
 // For each such element we find, call connectElement.
 // which establishes _outgoing_ socket communication for events
 // that happen to this element and its child nodes.
-function connectEvents(socket) {
-  document.addEventListener("DOMContentLoaded", function(evt) {
+function connectEvents(el = document.querySelector("body"), socket = connected_object) {
 
-    // compoents are a bit of a work in progress
-    components = document.querySelectorAll("[data-component]")
-    for (var i=0; i<components.length; i++) {
-      component = components[i]
-      nearest_item = component.closest("[data-item]:not([data-component])").getAttribute("data-item")
-      id = component.getAttribute("data-component")
-      component.setAttribute("data-item",nearest_item + "-" + id)
-    }
+  // compoents are a bit of a work in progress
+  components = el.querySelectorAll("[data-component]")
+  for (var i=0; i<components.length; i++) {
+    component = components[i]
+    nearest_item = component.closest("[data-item]:not([data-component])").getAttribute("data-item")
+    id = component.getAttribute("data-component")
+    component.setAttribute("data-item",nearest_item + "-" + id)
+  }
 
-    // for each element that has a data-events entry, set up the handlers
-    connected = document.querySelectorAll("[data-events]")
-    for (var i=0; i<connected.length; i++) {
-      handleElementEvents(connected[i], socket);
-    }
-
-
-  })
-}  
-
+  // for each element that has a data-events entry, set up the handlers
+  connected = el.querySelectorAll("[data-events]")
+  for (var i=0; i<connected.length; i++) {
+    handleElementEvents(connected[i], socket);
+  }
+} 
 
 // handle an incoming message over the socket
 function handleSocketMessage(message, evt) {
@@ -178,13 +174,13 @@ function takeAction(domData) {
   }
 }
 
-// this happens in connectEvents too
-function addListeners(el, socket = connected_object) {
-  connected = el.querySelectorAll("[data-events]")
-  for (var i=0; i<connected.length; i++) {
-    handleElementEvents(connected[i], socket);
-  }
-}
+// // this happens in connectEvents too
+// function addListeners(el, socket = connected_object) {
+//   connected = el.querySelectorAll("[data-events]")
+//   for (var i=0; i<connected.length; i++) {
+//     handleElementEvents(connected[i], socket);
+//   }
+// }
 
 function addSubscribers(el, socket = connected_object) {
   connected = el.querySelectorAll("[data-item]")
@@ -211,7 +207,7 @@ function modifyDOM(domData) {
       switch (domData.action) {
         case "update":
           el.innerHTML = domData.value
-          addListeners(el)
+          connectEvents(el)
           addSubscribers(el)
           break;
         case "update_attribute":
@@ -219,12 +215,12 @@ function modifyDOM(domData) {
           break;
         case "value":
           el.value = domData.value
-          addListeners(el)
+          connectEvents(el)
           addSubscribers(el)
           break;
         case "append_value":
           el.value += domData.value
-          addListeners(el)
+          connectEvents(el)
           addSubscribers(el)
           break;
         case "delete":
@@ -239,7 +235,7 @@ function modifyDOM(domData) {
               el.removeChild(children[0])
             }
           }
-          addListeners(el.lastChild)
+          connectEvents(el.lastChild)
           addSubscribers(el.lastChild)
           break;
       }

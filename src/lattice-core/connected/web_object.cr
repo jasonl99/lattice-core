@@ -411,17 +411,21 @@ module Lattice
         sessionID = "#{session_id}"
         #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
         #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
-        #{js_var}.onopen = function(evt) {
-            // on connection of this socket, send subscriber requests
-            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
-            el = document.querySelector("body")
-            addSubscribers(el, self.target)
-            addListeners(el,self.target)
-        };
         #{js_var}.onclose = function(evt) {
           console.log("Connected Socket closed", evt)
           }
-        // connectevents(#{js_var});
+        document.addEventListener("DOMContentLoaded", function(evt) {
+        #{js_var}.onopen = function(evt) {
+            // on connection of this socket, send subscriber requests
+            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
+            console.log("Socket connecting, configuring for updates..")
+            connectEvents()
+            addSubscribers(document.querySelector("body"), self.target)
+            // el = document.querySelector("body")
+            // addListeners(el,self.target)
+            };
+
+         })
 
 
         JS

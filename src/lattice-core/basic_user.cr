@@ -2,6 +2,7 @@ require "./user"
 module Lattice
 
   class BasicUser < User
+
     def load
       puts "Load user data here or override"
     end

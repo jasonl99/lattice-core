@@ -2,6 +2,7 @@ module Lattice::Connected
 
 
   class TooManySessions < Exception; end
+  class UserException < Exception; end
 
   # A cohort of WebObject used to create a client-server connection between a server-hosted
   # object (WebObject) and a client DOM-representation of that object.  To make the
@@ -131,8 +132,8 @@ module Lattice::Connected
       #   puts "No session (#{session_id}) found for this socket".colorize(:red).on(:white)
       #   puts "#{payload}".colorize(:blue).on(:white)
       # end
-      unless user.session  # A user cannot be without a session
-        raise "user does not have a session, therefore, cannot tie message to user"
+      unless user.session?  # A user cannot be without a session
+        raise UserException.new "user does not have a session, therefore, cannot tie message to user"
       else
         session = user.session.as(Session)
       end

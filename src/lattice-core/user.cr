@@ -13,26 +13,28 @@ module Lattice
     Session.timeout {|id| self.timeout(id)} 
 
     def initialize(@session : Session, @socket : HTTP::WebSocket)
-      load
+      prepare
     end
 
     def initialize(@session : Session)
-      load
+      prepare
     end
 
     def initialize(session_id : String = nil)
       if session_id && (session = Session.get(session_id))
-        session = session.as(Session)
+        prepare
         @session = session
         ACTIVE_USERS[session.id] = self
-        load
       else
+        puts "Have a session id #{session_id}, but do not have a session"
+        
         # the user will be created, but not persisted (it won't be added to ACTIVE_USERS
         # but any attempt to access things inside the session will cause an exception
       end
       self
     end
 
+    # TODO create a find_or_create with Session type, pass it in directly?
     def self.find_or_create(session_id : String)
       user = find?(session_id) || new(session_id)
       # user = self.find?(session_id.as(String))
@@ -47,6 +49,10 @@ module Lattice
       end
     end
 
+
+    def session?
+      @session
+    end
 
     def session
       @session.as(Session)
@@ -99,6 +105,15 @@ module Lattice
       puts "Users remaining #{ACTIVE_USERS.size}"
     end
 
+    def prepare
+      puts "Preparing new user"
+      if @session
+        session = @session.as(Session)
+        @session = session
+        session.string("last_activity", Time.now.to_s)
+      end
+      load
+    end
 
     abstract def save : self
     abstract def load : self
