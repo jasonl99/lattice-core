@@ -26,7 +26,6 @@ module Lattice
         @session = session
         ACTIVE_USERS[session.id] = self
       else
-        puts "Have a session id #{session_id}, but do not have a session"
         
         # the user will be created, but not persisted (it won't be added to ACTIVE_USERS
         # but any attempt to access things inside the session will cause an exception
@@ -106,7 +105,6 @@ module Lattice
     end
 
     def prepare
-      puts "Preparing new user"
       if @session
         session = @session.as(Session)
         @session = session

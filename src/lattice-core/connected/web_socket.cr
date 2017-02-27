@@ -137,15 +137,12 @@ module Lattice::Connected
       else
         session = user.session.as(Session)
       end
-      puts "attempting to find object from dom_item #{dom_item}"
       if (target = Lattice::Connected::WebObject.from_dom_id(dom_item))
         # if target.subscribed? socket
-        #   puts "The socket is subscribed to the target"
         # end
       end
       result = {"dom_item"=>dom_item, "session_id"=>session.id, "target": target, "params"=>params}
       tgt_dom_id = target.as(WebObject).dom_id if target
-      puts "dom_item: #{dom_item} / session_id: #{session.id} / params: #{params} / target.dom_id: #{tgt_dom_id}"
       raise "Too many actions" unless payload.keys.size == 1
       result
     end
@@ -153,7 +150,6 @@ module Lattice::Connected
     def self.check_other_sessions(good_session : String, socket : HTTP::WebSocket)
       other = REGISTERED_SESSIONS.select {|sock, sess| sess == good_session }
       other.each do |sock, sess|
-        puts "Session #{sess} has this socket #{sock.object_id} "
         # sock.send({"debug"=>"Are you from Omaha?"}.to_json)
         # sock.close
       end
@@ -196,7 +192,6 @@ module Lattice::Connected
     # in this case we simply set the value, overwriting any that may be present
     # def self.register_session(session_id : String, socket : HTTP::WebSocket)
     #   check_socket_memory!
-    #   puts "Socket object_ids #{REGISTERED_SESSIONS.keys.map &.object_id}"
     #   REGISTERED_SESSIONS[socket] = session_id
     #   if (user = User.find?(session_id))
     #     user.socket = socket
@@ -239,7 +234,6 @@ module Lattice::Connected
 
     def self.close(socket)
       #TODO unsubscribe items
-      # puts "Closing socket".colorize(:blue).on(:white)
       # socket.send({"close"=>{"message"=>"server closed socket"}}.to_json)
 
      socket.close  # this causes the following error
@@ -274,6 +268,7 @@ module Lattice::Connected
     # end
 
     def self.on_message(message : String, socket : HTTP::WebSocket, user : Lattice::User)
+      UserEvent.new(message, user)
 
       # if (session = user.session)
       #   session = session.as(Session)
