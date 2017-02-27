@@ -40,6 +40,12 @@ module Lattice
       end
     end
 
+
+    # A UserEvent is the first interaction we have with some action by the user.  This is where
+    # message validity is tested would be a good place for authenticating actions.  The
+    # sole entry point for action is @input, which is simply a string.   
+    # that string must become a valid JSON object, or the input is considered an error.
+    # If the input is valid, the chain continues and a new IncomingEvent is created
     class UserEvent < Event
       property user : Lattice::User
       property input : String
@@ -47,13 +53,14 @@ module Lattice
       property? error : Message?
 
       def initialize(@input, @user)
+        user.session.int("random", rand(10000))
         begin
           @message = JSON.parse(@input).as_h
           debug "UserEvent #{@message} created with #{@input} for #{@user}"
         rescue
           error = Message.new
           error["error"] = "could not convert incoming message to JSON"
-          error["source"] = @input
+          error["source"] = @input[0..200] # limit the amount we capture for now
           error["user"] = @user.to_s
           @error = error
           debug "Error creating UserEvent: #{@error}"
@@ -81,13 +88,17 @@ module Lattice
 
     end
 
+    # An IncomingEvent is data from an external source (currently only a User), which has
+    # been validated format and possibly authentication. This step is further refined
+    # where we now now the action, the dom_item that created the event, and the parameters.
+    # furthermore, we know the dom_item, and can use this to look up an actual instantiated object
     class IncomingEvent < Event
       property user : Lattice::User
       property action : String?
       property params : Message
       property component : String?
       property index : Int32?
-      @dom_item : String
+      property dom_item : String
 
       #OPTIMIZE
       # create ClickEvent, InputEvent where
@@ -103,17 +114,14 @@ module Lattice
       end
 
       # returns the instantiated web object for this item
+      # if there is no object, this will return nil (the dom_id has basically expired)
       def web_object
         if (dom = @dom_item)
           WebObject.from_dom_id(dom)
         end
       end
 
-
     end
-
-
-
 
     class OutgoingEvent < Event
       property message : Message

@@ -1,3 +1,18 @@
+socket_protocol = "ws:"
+if (location.protocol === 'https:') { socket_protocol = "wss:" }
+connected_object = new WebSocket(socket_protocol + location.host + "/connected_object");
+connected_object.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
+connected_object.onclose = function(evt) { console.log("Connected Socket closed", evt) }
+
+document.addEventListener("DOMContentLoaded", function(evt) {
+  connected_object.onopen = function(evt) {
+    console.log("Socket connecting, configuring for updates..")
+    addSubscribers(document.querySelector("body"), self.target)
+    connectEvents()
+  };
+})
+
+
 function sendEvent(msg,socket) {
   socket.send(JSON.stringify(msg)) 
 }
@@ -27,9 +42,10 @@ function baseEvent(evt,event_action, action_params = {}) {
 // outgoing events look like this:// {"some-data-item": {action: "click", params: {x:123, y:232}}}
 // On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
-function handleEvent(event_type, el, socket) {
+function handleEvent(event_type, el, socket, options = {formReset: true}) {
   switch (event_type) {
     case "click":
+      console.log("Handling click event", el)
       el.addEventListener("click", function(evt) {
         msg = baseEvent(evt,"click")
         sendEvent(msg,socket)
@@ -62,10 +78,12 @@ function handleEvent(event_type, el, socket) {
         evt.preventDefault();
         evt.stopPropagation();
         msg = baseEvent(evt, "submit", formToJSON(el))
-        console.log("Submitting:", msg)
+        // console.log("Submitting:", msg)
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
-        el.reset();  //TODO This is just a quick method of clearing the form for now
+        if (options.formReset) {
+          el.reset();  //TODO This is just a quick method of clearing the form for now
+        }
       })
       break;
   }
@@ -97,6 +115,7 @@ function getItems(item_list) {
 function handleElementEvents(el,socket) {
   event_types = getItems(el.getAttribute("data-events"));
   for (var i=0; i<event_types.length;i++) {
+    console.log("Handling",event_types[i],el)
     handleEvent(event_types[i],el, socket)
   }
 }
@@ -120,6 +139,27 @@ function connectElements(el, socket) {
 // that happen to this element and its child nodes.
 function connectEvents(el = document.querySelector("body"), socket = connected_object) {
 
+  // form - any form under a data-item gets a submit event,
+  // and for now its inputs get input events.
+  // forms = el.querySelectorAll("[data-item] form")
+  // for (var i=0; i<forms.length; i++) {
+  //   form = forms[i]
+  //   nearest_item = form.closest("[data-item]").getAttribute("data-item")
+  //   id = el.getAttribute("name") || "form"
+  //   form.setAttribute("data-item", nearest_item + "-" + id)
+  //   handleEvent("submit", form, connected_object, {formReset: false})
+  // }
+
+  // formElements = el.querySelectorAll("[data-item] form input[name]")
+  // // console.log("form elements", formElements)
+  // for (var i=0; i<formElements.length; i++) {
+  //   el = formElements[i]
+  //   nearest_item = el.closest("[data-item]").getAttribute("data-item")
+  //   id = el.getAttribute("name")
+  //   el.setAttribute("data-item", nearest_item + "-" + id)
+  //   handleEvent("input", el, connected_object)
+  // }
+
   // compoents are a bit of a work in progress
   components = el.querySelectorAll("[data-component]")
   for (var i=0; i<components.length; i++) {
@@ -140,11 +180,11 @@ function connectEvents(el = document.querySelector("body"), socket = connected_o
 function handleSocketMessage(message, evt) {
   payload = JSON.parse(message);
   if ("dom" in payload) {
-    console.log("ServerClient Dom: ", payload.dom)
+    // console.log("ServerClient Dom: ", payload.dom)
     modifyDOM(payload.dom);
   }
   if ("act" in payload) {
-    console.log("ServerClient Act: ", payload.act)
+    // console.log("ServerClient Act: ", payload.act)
     takeAction(payload.act);
   }
   if ("error" in payload) {
@@ -184,9 +224,6 @@ function takeAction(domData) {
 
 function addSubscribers(el, socket = connected_object) {
   connected = el.querySelectorAll("[data-item]")
-  if ( connected.length > 0) {
-    console.log("Adding subscribers for new content.", el.getAttribute("data-item"), connected)
-  }
   for (var i=0; i<connected.length; i++) {
     id = connected[i].getAttribute("data-item")
     if (id.split("-").length == 2) {
@@ -212,6 +249,12 @@ function modifyDOM(domData) {
           break;
         case "update_attribute":
           el.setAttribute(domData.attribute, domData.value)
+          break;
+        case "add_class":
+          el.classList.add(domData.value)
+          break;
+        case "remove_class":
+          el.classList.remove(domData.value)
           break;
         case "value":
           el.value = domData.value
