@@ -124,9 +124,17 @@ module Lattice
     end
 
     class OutgoingEvent < Event
-      property message : Message
+      property message : Message | ConnectedMessage | Hash(String,Hash(String,String)) # CM until conversion complete
       property sockets : Array(HTTP::WebSocket)
-      def initialize(@message, @sockets)
+      property source : WebObject
+
+      def initialize(@message, @sockets, @source)
+        debug "new OutgoingEvent: #{@message} for #{sockets.size} sockets sending to handler"
+        send
+      end
+
+      def send
+        source.class.event_handler.send_event(self)
       end
     end
 

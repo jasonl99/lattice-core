@@ -1,7 +1,7 @@
 require "./connected/*"
 module Lattice
   module Connected
-    alias ConnectedMessage = Hash( String, JSON::Type )
+    alias ConnectedMessage = Hash( String, JSON::Type ) | Message
     SOCKET_LOGGER = Logger.new(File.open("./connected.log","a"))
     SOCKET_LOGGER.level = Logger::WARN
     SOCKET_LOGGER.formatter = Logger::Formatter.new do |severity, datetime, progname, message, io|

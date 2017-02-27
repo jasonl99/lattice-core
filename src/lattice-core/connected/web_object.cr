@@ -72,11 +72,11 @@ module Lattice
         puts "#{self.to_s} IncomingEvent action (#{event.component} #{event.action} #{event.params}".colorize(:green).on(:white)
       end
 
-      def observe_event( event : IncomingEvent, target)
+      def observe_event( event : IncomingEvent | OutgoingEvent, target)
         puts "#{self.to_s}#observe_event : #{event}".colorize(:green).on(:white)
       end
 
-      def self.observe_event( event : IncomingEvent, target)
+      def self.observe_event( event : IncomingEvent | OutgoingEvent, target)
         puts "#{self.to_s}.class#observe_event : #{event}".colorize(:green).on(:white)
       end
 
@@ -191,16 +191,23 @@ module Lattice
 
       # send a message to given sockets
       def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        WebSocket.send sockets, msg.to_json
 
-        emit_event DefaultEvent.new(
-          event_type: "message",
-          sender: self,
-          dom_item: dom_id,
+        OutgoingEvent.new(
           message: msg,
-          # session_id: nil,
-          # socket: nil,
-          direction: "Out")
+          sockets: sockets,
+          source: self
+        )
+
+#        WebSocket.send sockets, msg.to_json
+
+        # emit_event DefaultEvent.new(
+        #   event_type: "message",
+        #   sender: self,
+        #   dom_item: dom_id,
+        #   message: msg,
+        #   # session_id: nil,
+        #   # socket: nil,
+        #   direction: "Out")
       end
 
       def refresh
