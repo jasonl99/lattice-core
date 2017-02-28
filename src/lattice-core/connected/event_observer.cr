@@ -7,6 +7,10 @@ module Lattice
       # Relay the event to the EventObserver class (broadcast)
       # Relay the event to the sender's class (mediumcast)
       # Relay teh event to the listners (narrowcast)
+      def observe_event(event,sender)
+        puts "PLACEHOLDER UNTIL event_handler REPLACES"
+      end
+
       def on_event(event : ConnectedEvent, sender)
         # puts "EventObserver: event reported by #{sender.name} for #{event.dom_item}"
         event.sender.on_event event, sender if event.direction == "In"

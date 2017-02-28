@@ -15,8 +15,9 @@ module Lattice
       if (prop_tgt = target.propagate_event_to?)
         prop_tgt.on_event event
       end
-      target.observers.select {|o| o.is_a?(WebObject)}.each &.observe_event(event, target)
-      target.class.observers.select {|o| o.is_a?(WebObject)}.each &.as(WebObject).observe_event(event, target)
+      target.observers.select {|o| o.responds_to?(:observe_event)}.each &.observe_event(event, target)
+      #target.class.observers.select {|o| o.responds_to?(:observe_event)}.each &.as(WebObject).observe_event(event, target)
+      target.class.observers.each &.observe_event(event, target)
     end
 
     end

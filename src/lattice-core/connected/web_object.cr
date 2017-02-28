@@ -13,17 +13,12 @@ module Lattice
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, UInt64).new  # ("game1"=>12519823982) int is Base62.int_digest of signature
-      # @@observer = EventObserver.new
       @@observers = [] of EventObserver | WebObject
       @@observers << EventObserver.new
       @@emitter = EventEmitter.new
       @@event_handler = EventHandler.new
       @@max_instances = 1000  # raise an exception if this is exceeded.
-      class_getter observers
-      class_getter instances
-      class_getter observer
-      class_getter emitter
-      class_getter event_handler
+      class_getter observers, instances, observer, emitter, event_handler
 
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
@@ -65,19 +60,24 @@ module Lattice
 
 
       def handle_event( incoming : IncomingEvent )
+        if incoming.action == "subscribe" && (sock = incoming.user.socket) && (sess = incoming.user.session.id)
+          puts "Subscribing to #{self}".colorize(:red).on(:white)
+          subscribe(sock, sess) # this needs to be worked on.  Not sure this is the right place for subs
+        else
+        end
         @@event_handler.handle_event(incoming, self)
       end
 
       def on_event( event : IncomingEvent)
-        puts "#{self.to_s} IncomingEvent action (#{event.component} #{event.action} #{event.params}".colorize(:green).on(:white)
+        # puts "#{self.to_s} IncomingEvent action (#{event.component} #{event.action} #{event.params}".colorize(:green).on(:white)
       end
 
       def observe_event( event : IncomingEvent | OutgoingEvent, target)
-        puts "#{self.to_s}#observe_event : #{event}".colorize(:green).on(:white)
+        # puts "#{self.to_s}#observe_event : #{event}".colorize(:green).on(:white)
       end
 
       def self.observe_event( event : IncomingEvent | OutgoingEvent, target)
-        puts "#{self.to_s}.class#observe_event : #{event}".colorize(:green).on(:white)
+        # puts "#{self.to_s}.class#observe_event : #{event}".colorize(:green).on(:white)
       end
 
 
@@ -197,21 +197,9 @@ module Lattice
           sockets: sockets,
           source: self
         )
-
-#        WebSocket.send sockets, msg.to_json
-
-        # emit_event DefaultEvent.new(
-        #   event_type: "message",
-        #   sender: self,
-        #   dom_item: dom_id,
-        #   message: msg,
-        #   # session_id: nil,
-        #   # socket: nil,
-        #   direction: "Out")
       end
 
       def refresh
-        # update_content(self.content)
         update({"id"=>dom_id, "value"=>to_html}, subscribers)
       end
 
@@ -237,7 +225,7 @@ module Lattice
       end
 
       #-----------------------------------------------------------------------------------------
-      # these go out to the sockets
+      # these go out to the sockets and would have a javascript handler on the users' browser
       def remove_class( change : Hash(String,String), subscribers : Array(HTTP::WebSocket) = self.subscribers )
         # try merging in other direction to eliminate needing the id
         msg = { "dom"=>{"id"=>dom_id,"action"=>"remove_class"}.merge(change) }
@@ -300,14 +288,8 @@ module Lattice
       # no rendering capability of its own.  It would be a composite object that
       # would handle this (in other words, an observer would have a @something WebObject
       # to display what is observed
-      def self.add_observer( observer : EventObserver | WebObject )
+      def self.add_observer( observer : WebObject )
         @@observers << observer
-      end
-
-      # the entry point for creating events.  The @observer
-      # handles sending them to various endpoints
-      def emit_event(event : ConnectedEvent)
-        @@emitter.emit_event(event, self)
       end
 
       def propagate(event, to = @propagate_event_to)
@@ -315,25 +297,6 @@ module Lattice
           to.on_event(event, self)
         end
       end
-
-      # Fires when an event occurs on any instance of this class.
-      def self.on_event(event : ConnectedEvent, speaker : WebObject)
-      end
-
-      # an on_event fires here, in the observing instance
-      def on_event(event : ConnectedEvent, speaker : WebObject)
-      end
-
-      # observe fires in the observer.  The data is wrapped into a ConnectedMessage and on_event fired
-      # def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
-      #   event = DefaultEvent.new( talker, dom_item, action, session_id, socket, direction)
-      #   # @events << event
-      #   on_event event, self
-      #   if (propagate = @propagate_event_to)
-      #     puts "Propagating event to #{@propagate_event_to}".colorize(:red).on(:white)
-      #     propagate.on_event, self
-      #   end
-      # end
 
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
       # the other end of the endpoint is the user's browser.  Since each browser does it, it's 
@@ -371,40 +334,12 @@ module Lattice
       def unsubscribe( socket : HTTP::WebSocket)
         @subscribers.delete(socket)
         unsubscribed socket
-
-        #event is emitted after unsubbing, or it will try to send it to the socket that is in flux
-        # emit_event DefaultEvent.new(
-        #   event_type: "unsubscribe",
-        #   sender: self,
-        #   dom_item: dom_id,
-        #   message: nil,
-        #   session_id: nil,  #TODO we can get the session id from the socket.
-        #   socket: nil,      #It might be useful to pass this on so further cleanup can be done.
-        #   direction: "In"
-        # )
       end
 
       # this socket is now unsubscribed from this object
       def unsubscribed( socket : HTTP::WebSocket)
       end
 
-      # Called during page rendering prep as a spinup for an object.  Instantiate a new 
-      # object (if requested), return the javascript and object for rendering.
-      def self.preload(name : String, session_id : String, create = true)
-        if (existing = @@instances.fetch(name,nil)) && (target = INSTANCES[existing]?)
-          # target = INSTANCES[existing]
-        else
-          target = new(name)
-        end
-        return { javascript(session_id,target), target.as(self) }
-      end
-
-      def self.js_var
-        # "#{self.to_s.split("::").last.downcase}Socket"
-        "connected_object"
-      end
-
-      # a publicly-consumable id that can be used to find the object in ##from_dom_id
       def dom_id( component : String? = nil ) : String
         if component
           @components[component] = "" unless @components[component]?
@@ -429,8 +364,6 @@ module Lattice
         return unless val # obviously there's no idx
         val.split("-").last.to_i32?
       end
-
-
 
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
