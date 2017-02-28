@@ -13,9 +13,7 @@ module Lattice
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, UInt64).new  # ("game1"=>12519823982) int is Base62.int_digest of signature
-      @@observers = [] of EventObserver | WebObject
-      @@observers << EventObserver.new
-      @@emitter = EventEmitter.new
+      @@observers = [] of WebObject
       @@event_handler = EventHandler.new
       @@max_instances = 1000  # raise an exception if this is exceeded.
       class_getter observers, instances, observer, emitter, event_handler
