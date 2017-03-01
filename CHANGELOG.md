@@ -1,3 +1,9 @@
+# Version 0.16
+
+Events and messages are now handled much more cleanly.  Much of WebSocket's documentation
+was removed since it was getting stale.  Will rewrite as things stabilize.
+
+
 # Version 0.15
 
 More significant changes.  
