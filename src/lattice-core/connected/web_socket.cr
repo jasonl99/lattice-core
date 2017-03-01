@@ -1,6 +1,5 @@
 module Lattice::Connected
 
-
   class TooManySessions < Exception; end
   class UserException < Exception; end
 
@@ -9,7 +8,7 @@ module Lattice::Connected
     @@max_sessions = 100_000 # I have absolutely no idea what this number and or should be.
 
     def self.close(socket)
-     socket.close  # this causes the following error
+     socket.close 
       WebObject::INSTANCES.values.each do |web_object|
         web_object.unsubscribe(socket)
       end
@@ -21,7 +20,6 @@ module Lattice::Connected
         socket.send(msg) unless socket.closed?
       end
     end
-
 
     def self.on_message(message : String, socket : HTTP::WebSocket, user : Lattice::User)
       UserEvent.new(message, user)

@@ -78,9 +78,6 @@ module Lattice
         # puts "#{self.to_s}.class#observe_event : #{event}".colorize(:green).on(:white)
       end
 
-
-
-
       def check_instance_memory!
         #TODO try garbage collecting first, and only then raise this erro.
         #gc would look for the first instance that has no subscribers,
@@ -198,7 +195,7 @@ module Lattice
       end
 
       def refresh
-        update({"id"=>dom_id, "value"=>to_html}, subscribers)
+        update({"id"=>dom_id, "value"=>content}, subscribers)
       end
 
       def update_content( content : String, subscribers = self.subscribers)
