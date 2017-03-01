@@ -8,7 +8,7 @@ What happens when you type in an address in your browser's address bar and hit e
 
 And for what purpose?  Have you ever looked at the same page or two different computers?  It's almost identical, with some customization for each user.    Making matters worse, the web has always been a stateless system; once a web page is transferred, the server forgets you like a bad sandwich.
 
-We don't want that!  When I look at a baseball scoreboard, I want to see the current score of each game, complete with ball & strike counts for the current at-bat.  When I look at a stock price, I want to see the trade that occurred _just now_.  When I look at a news story, I want to see an chart that shows how other people are reacting to the story.   
+We don't want that!  When I look at a baseball scoreboard, I want to see the current score of each game, complete with ball & strike counts for the current at-bat.  When I look at a stock price, I want to see the trade that occurred _just now_.  When I look at a news story, I want to see a chart that shows how other people are reacting to the story.   
 
 Applications that run on your phone or computer are interactive - they feel _immediate_.   When you press a button, the screen changes _now_.   
 
