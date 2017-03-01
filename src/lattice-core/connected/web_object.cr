@@ -13,15 +13,10 @@ module Lattice
       INSTANCES = Hash(UInt64, self).new      # all instance, with key as signature
       @signature : String?
       @@instances = Hash(String, UInt64).new  # ("game1"=>12519823982) int is Base62.int_digest of signature
-      # @@observer = EventObserver.new
-      @@observers = [] of EventObserver | WebObject
-      @@observers << EventObserver.new
-      @@emitter = EventEmitter.new
+      @@observers = [] of WebObject
+      @@event_handler = EventHandler.new
       @@max_instances = 1000  # raise an exception if this is exceeded.
-      class_getter observers
-      class_getter instances
-      class_getter observer
-      class_getter emitter
+      class_getter observers, instances, observer, emitter, event_handler
 
       @subscribers = [] of HTTP::WebSocket
       @observers = [] of self
@@ -35,11 +30,52 @@ module Lattice
       property observers   # we talk to objects who want to listen by sending a listen_to messsage
       property name : String
       property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
+      property? propagate_event_to : WebObject?
 
       def initialize(@name : String, @creator : WebObject? = nil)
+        if (creator = @creator)
+          creator_string = "#{creator.class} '#{creator.name}'" 
+          @propagate_event_to = creator
+        end
         check_instance_memory!
         self.class.add_instance self
         after_initialize
+      end
+
+      def self.find(name)
+        if (signature = @@instances[name]?)
+          INSTANCES[signature]
+        end
+      end
+
+      def self.find_or_create(name, creator : WebObject? = nil)
+        find(name) || new(name, creator)
+      end
+
+      def self.from_dom_id!(dom : String) : self
+        from_dom_id(dom).as(self)
+      end
+
+
+      def handle_event( incoming : IncomingEvent )
+        if incoming.action == "subscribe" && (sock = incoming.user.socket) && (sess = incoming.user.session.id)
+          puts "Subscribing to #{self}".colorize(:red).on(:white)
+          subscribe(sock, sess) # this needs to be worked on.  Not sure this is the right place for subs
+        else
+        end
+        @@event_handler.handle_event(incoming, self)
+      end
+
+      def on_event( event : IncomingEvent)
+        # puts "#{self.to_s} IncomingEvent action (#{event.component} #{event.action} #{event.params}".colorize(:green).on(:white)
+      end
+
+      def observe_event( event : IncomingEvent | OutgoingEvent, target)
+        # puts "#{self.to_s}#observe_event : #{event}".colorize(:green).on(:white)
+      end
+
+      def self.observe_event( event : IncomingEvent | OutgoingEvent, target)
+        # puts "#{self.to_s}.class#observe_event : #{event}".colorize(:green).on(:white)
       end
 
       def check_instance_memory!
@@ -78,12 +114,9 @@ module Lattice
       # keep track of all instances, both at the class level (each subclass) and the 
       # abstract class level.
       def self.add_instance( instance : WebObject)
-        # puts "#{instance.class} #{instance.name} signature #{instance.signature}"
-        # puts "Base62.int_digest instance.signature #{Base62.int_digest instance.signature}"
         base62_digest = Base62.int_digest(instance.signature)
         INSTANCES[base62_digest] = instance
         @@instances[instance.name] = base62_digest 
-        puts "Added #{instance.name} with signature: #{instance.signature} digest: #{base62_digest} to #{self} INSTANCES and @@instances"
       end
 
       # Use Base62.string_digest
@@ -125,7 +158,7 @@ module Lattice
         data_item_id = rendered_dom_id || @element_options["data-item"]? || dom_id
         tag_string = "<#{tag} data-item='#{data_item_id}' "
         @element_options.reject {|opt,val| opt == "type"}.each do |(opt,val)|
-          puts opt, val
+          # puts opt, val
           tag_string += "#{opt}='#{val}' "
         end
         tag_string += ">\n"
@@ -141,7 +174,7 @@ module Lattice
 
       # useful for logging, etc
       def to_s
-        dom_id
+        "#{self.class} #{self.name} (#{dom_id})"
       end
 
       # either the session & the value exist or its nil
@@ -152,19 +185,18 @@ module Lattice
       end
 
       # send a message to given sockets
-      def send(msg : ConnectedMessage, sockets : Array(HTTP::WebSocket))
-        puts "Sending message for #{self.name} to #{sockets.size} sockets".colorize(:green).on(:white)
-        WebSocket.send sockets, msg.to_json
+      def send(msg : Message, sockets : Array(HTTP::WebSocket))
 
-        # puts "Message sent: #{msg}"
-        emit_event DefaultEvent.new(
-          event_type: "message",
-          sender: self,
-          dom_item: dom_id,
+        puts "Sending class #{msg.class}".colorize(:red).on(:white)
+        OutgoingEvent.new(
           message: msg,
-          # session_id: nil,
-          # socket: nil,
-          direction: "Out")
+          sockets: sockets,
+          source: self
+        )
+      end
+
+      def refresh
+        update({"id"=>dom_id, "value"=>content}, subscribers)
       end
 
       def update_content( content : String, subscribers = self.subscribers)
@@ -180,8 +212,28 @@ module Lattice
         end
       end
 
+      def add_class( html_class : String )
+        add_class({"value"=>html_class})
+      end
+
+      def remove_class( html_class : String )
+        remove_class({"value"=>html_class})
+      end
+
       #-----------------------------------------------------------------------------------------
-      # these go out to the sockets
+      # these go out to the sockets and would have a javascript handler on the users' browser
+      def remove_class( change : Hash(String,String), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+       # try merging in other direction to eliminate needing the id
+        msg = { "dom"=>{"id"=>dom_id,"action"=>"remove_class"}.merge(change) }
+        send msg, subscribers
+      end
+
+      def add_class( change : Hash(String,String), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+        # msg = { "dom"=>change.merge({"action"=>"add_class"}) }
+        msg = { "dom"=>{"id"=>dom_id,"action"=>"add_class"}.merge(change) }
+        send msg, subscribers
+      end
+
       def update_attribute( change, subscribers : Array(HTTP::WebSocket) = self.subscribers )
         msg = { "dom"=>change.merge({"action"=>"update_attribute"}) }
         send msg, subscribers
@@ -232,31 +284,14 @@ module Lattice
       # no rendering capability of its own.  It would be a composite object that
       # would handle this (in other words, an observer would have a @something WebObject
       # to display what is observed
-      def self.add_observer( observer : EventObserver | WebObject )
+      def self.add_observer( observer : WebObject )
         @@observers << observer
       end
 
-      # the entry point for creating events.  The @observer
-      # handles sending them to various endpoints
-      def emit_event(event : ConnectedEvent)
-        @@emitter.emit_event(event, self)
-      end
-
-      # Fires when an event occurs on any instance of this class.
-      def self.on_event(event : ConnectedEvent, speaker : WebObject)
-        # puts "#{to_s} class event: #{event.event_type} #{event.direction} from #{speaker.name} for #{event.dom_item}".colorize(:blue).on(:light_gray)
-      end
-
-      # an on_event fires here, in the observing instance
-      def on_event(event : ConnectedEvent, speaker : WebObject)
-      #  puts "#{dom_id.colorize(:green).on(:white).to_s} Observed Event: #{event.colorize(:blue).on(:white).to_s} from #{speaker}"
-      end
-
-      # observe fires in the observer.  The data is wrapped into a ConnectedMessage and on_event fired
-      def observe(talker, dom_item : String, action : ConnectedMessage, session_id : String | Nil, socket : HTTP::WebSocket, direction : String)
-        event = DefaultEvent.new( talker, dom_item, action, session_id, socket, direction)
-        # @events << event
-        on_event event, self
+      def propagate(event, to = @propagate_event_to)
+        if event && to
+          to.on_event(event, self)
+        end
       end
 
       # subscribers are sockets.  This sets one endpoint at a WebObjec tinstance , while
@@ -276,7 +311,6 @@ module Lattice
           # update({"id"=>dom_id, "value"=>content}, [socket]) if auto_add_content
         else
           # if things are working correctly, we shouldn't ever see this.
-          puts "socket #{socket.object_id} already in #{subscribers.map &.object_id}".colorize(:red)
         end
       end
 
@@ -296,41 +330,12 @@ module Lattice
       def unsubscribe( socket : HTTP::WebSocket)
         @subscribers.delete(socket)
         unsubscribed socket
-
-        #event is emitted after unsubbing, or it will try to send it to the socket that is in flux
-        # emit_event DefaultEvent.new(
-        #   event_type: "unsubscribe",
-        #   sender: self,
-        #   dom_item: dom_id,
-        #   message: nil,
-        #   session_id: nil,  #TODO we can get the session id from the socket.
-        #   socket: nil,      #It might be useful to pass this on so further cleanup can be done.
-        #   direction: "In"
-        # )
       end
 
       # this socket is now unsubscribed from this object
       def unsubscribed( socket : HTTP::WebSocket)
       end
 
-      # Called during page rendering prep as a spinup for an object.  Instantiate a new 
-      # object (if requested), return the javascript and object for rendering.
-      def self.preload(name : String, session_id : String, create = true)
-        if (existing = @@instances.fetch(name,nil)) && (target = INSTANCES[existing]?)
-          puts "existing instance found for #{name} with #{existing}"
-          # target = INSTANCES[existing]
-        else
-          target = new(name)
-        end
-        return { javascript(session_id,target), target.as(self) }
-      end
-
-      def self.js_var
-        # "#{self.to_s.split("::").last.downcase}Socket"
-        "connected_object"
-      end
-
-      # a publicly-consumable id that can be used to find the object in ##from_dom_id
       def dom_id( component : String? = nil ) : String
         if component
           @components[component] = "" unless @components[component]?
@@ -356,10 +361,10 @@ module Lattice
         val.split("-").last.to_i32?
       end
 
-
-
       # given a dom_id, attempt to figure out if it is already instantiated
       # as k/v in INSTANCES, or instantiate it if possible.
+      # TODO it is not currently creating, not sure if that's possible with
+      # signature?
       def self.from_dom_id( dom : String)
         if (split = dom.split("-") ).size >= 2
           klass, signature = dom.split("-").first(2)
@@ -367,78 +372,17 @@ module Lattice
           # by multiple people or that require frequent updates) the default is to use
           # the classname-signature as a dom_id.  The signature is something that is sufficiently
           # random that we can quickly determine if an object is "real".
-          puts "Attempting to find object from #{klass}, #{signature}"
           if (obj = from_signature(signature))
-            puts "Found #{obj.class}: #{obj.name}"
             return obj if obj.class.to_s.split("::").last == klass
           end
         end
       end
 
-      def self.find(name)
-        if (signature = @@instances[name]?)
-          INSTANCES[signature]
-        end
-      end
-
-      def self.find_or_create(name)
-        find(name) || new(name)
-      end
-
-      def self.from_dom_id!(dom : String) : self
-        from_dom_id(dom).as(self)
-      end
-
       def self.from_signature( signature : String)
-        # puts "from_signature looking for '#{signature}' int_digest #{Base62.int_digest signature}"
-        # puts signature.inspect
-        # puts Base62.int_digest signature
-        # puts "Instance sigs: #{INSTANCES.values.map &.signature}"
         base62_signature = Base62.int_digest(signature)
-        puts "Converting signature #{signature} to base62: #{base62_signature}"
         if ( instance = INSTANCES[base62_signature]? )
-          puts "found instance"
           return instance
-        else
-          puts "could not find instance".colorize(:red)
         end
-      end
-
-      # this creates a connection back to the serverm immediately calls back with a session_id
-      # and the element ids to which to subscribe.
-      # It then creates event observers for actions on subscribed objects, currently
-      # just click events (more will come)
-      # FIXME we have a problem right now when the same object is on the page twice: it only
-      # updates one of them since document.getElementById only returns the first match.
-      # this can be solved by using a class instead of an id (so cardgame-12312-card-2 is the
-      # class, not the id.
-      def self.javascript(session_id : String, target : _)
-        javascript = <<-JS
-        socket_protocol = "ws:"
-        if (location.protocol === 'https:') {
-          socket_protocol = "wss:"
-        }
-        sessionID = "#{session_id}"
-        #{js_var} = new WebSocket(socket_protocol + location.host + "/connected_object");
-        #{js_var}.onmessage = function(evt) { handleSocketMessage(evt.data, evt) };
-        #{js_var}.onclose = function(evt) {
-          console.log("Connected Socket closed", evt)
-          }
-        document.addEventListener("DOMContentLoaded", function(evt) {
-        #{js_var}.onopen = function(evt) {
-            // on connection of this socket, send subscriber requests
-            evt.target.send(JSON.stringify({session_id:"#{session_id}"}))
-            console.log("Socket connecting, configuring for updates..")
-            addSubscribers(document.querySelector("body"), self.target)
-            connectEvents()
-            // el = document.querySelector("body")
-            // addListeners(el,self.target)
-            };
-
-         })
-
-
-        JS
       end
 
       def self.subclasses

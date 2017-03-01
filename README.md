@@ -1,44 +1,79 @@
 # lattice-core
 
-A [crystal-lang](https://github.com/crystal-lang/crystal) framework build on [kemal](https://github.com/kemalcr/kemal) that takes a WebSocket-first approach to web development.
+A [crystal-lang](https://github.com/crystal-lang/crystal) framework built on [kemal](https://github.com/kemalcr/kemal) that takes a realtime-first approach to web development.
 
 ## Background
 
-Developing a website with data that updates in realtime -- instantly updating the page with changes 
-as the occur on the server -- has always a challenging task:  you are creating event models for 
-two objects:  one on the server (an instantiated object of some kind), and in the browser (a DOM node), and trying to 
-maintain state between them.
+What happens when you type in an address in your browser's address bar and hit enter?  I alot, actually.  A request gets built, a connection established, information is exchanged (for example, what monitor resolution do I have, what operating system am I using, what browser?)  The server takes this request, maps it against known addresses, authenticates you, creates a response by querying a database or large-scale caching system, and sends it, along with a bunch of headers that tell your browser how to react and what to do with the data.  It spits out an enormous amount of data to display the current _state_ of something.  Moments later that state is wrong and needs to be updated.  
 
-That's challenging enough on its own.  The server is an abstract representation, while the browser is a particular
-visual representation of a subset of the object on the server.  Adding to the complexity is the fact that http is
-inherently stateless, and now every update needs a whole setup and teardown process as the browser creates a new request, and the server creates a new response. Add the subsequent teardown, and you're looking at a _ton_ of work to update an element on a page.
+And for what purpose?  Have you ever looked at the same page or two different computers?  It's almost identical, with some customization for each user.    Making matters worse, the web has always been a stateless system; once a web page is transferred, the server forgets you like a bad sandwich.
 
-The axiomatic way to do this has been use some javascript libarary that ulimately performs these updates over AJAX.  The updates still happen in a stateless manner -- it's just that a lot of the  complexity and overhead is invisibly buried and discarded by the javascript that performs the ajax. But make no mistake browser and the server still work _a lot_ to update a little element on you page.   
+We don't want that!  When I look at a baseball scoreboard, I want to see the current score of each game, complete with ball & strike counts for the current at-bat.  When I look at a stock price, I want to see the trade that occurred _just now_.  When I look at a news story, I want to see an chart that shows how other people are reacting to the story.   
 
-Enter [WebSockets](https://www.websocket.org/quantum.html).  They are relatively new, part of the HTML5 spec.  They won't work on all browsers, but according to [this page](http://caniuse.com/#feat=websockets) they are usable by more than 90% of current users.  That's not bad.  Just be clear, there is no intention of 
-making this framework work without WebSockets, which means it also requires javascript.   Some people turn off
-javascript.  This framework won't work for them either.  Think of it as a platform-specific framework:  Instead of Android or iOS,  it's the "socket-ready browser" platform.  I think a platform that supports 90%+ of users is a pretty good target.
+Applications that run on your phone or computer are interactive - they feel _immediate_.   When you press a button, the screen changes _now_.   
 
-## Yeah, but, _Require_ websockets?  Why be so limiting?
+Modern web development has gone a long way to making  web sites more like local apps, but it's hard to do.  It's a nightmare to keep track of which objects update, and if they are going to interfere with each other.  It's also horribly inefficient -- every little update has a ton of overhead on both the server and browser.
 
-I've been programming for a long time.  I've experimented with different frameworks, and I've played around many times with the newest "language of the month."  It's incredibly overwhelming to be faced with a new language that can do something a little better, or that promises some big advantage of last month's favorite.   And just "trying out" a new language does not give you enough time to learn the nuances that are important to efficient programming.
+### State
 
-There are ton of mature  frameworks out there already that do far more than I could ever hope to accomplish with a more traditional way http- or ajax-first approach.  This frameworks tries to be something completely different, in a completely different way.  
+A lot of this difficult comes about because we take something we created (a scoreboard page that shows the Red Sox beating the Yankees 3-0), and try to keep it in sync with the server.  We  resort to sleight-of-hand and create requests that run every 10 or 20 seconds and get the latest score.    We try to keep each side's state the same.
 
-The irony is also not lost on me -- Crystal itself is a pretty new language, and you could probably make a convincing argument that I'm just using another language of the month.
+Think about that for a second:  Let's say we have a thousand users looking at a scoreboard page, and our javascript code polls it every ten seconds for updates.  That's 6,000 requests  a minute for the simple act of seeing if any scores changed.  Requests that the server has to look up (load from storage, render html).  It's insanity, is what it is.  
 
-But something happened for me as I started experimenting with Crystal.  I can't (and won't) make any promises that you'll feel the same way.  Crystal's standard http library includes a nice implementation of WebSockets that's augmented by kemal.  Up until a few months ago,  I thought WebSockets were something you used if you wanted to include video streaming on your web page.  Never once had I written javascript to open a websocket.  But kemal has an intriguing [chat demo](https://github.com/sdogruyol/kemal-chat) that struck me with its elegant simplicity.  So I dug.  I'll freely admit  I became a little obsessed.
+At some point, our server learned that the Red Sox had taken a 4-0 lead.  In the current system, those thousand users, spread out over the next ten seconds, will see the new score (many of them happy about it).  But the barrage doesn't stop.  It keeps coming, our now-annoyed server wondering why it has to keep telling all these users "IT'S STILL 4-0 LEAVE ME ALONE!" 
 
-Crystal has a beautiful syntax.  It's very much like Ruby, but it's compiled, so it's fast.  It's strongly-typed, but it does so without getting in your way.  I can't help think that Crystal has done for typing what ruby did for syntax.
+This happens for one reason:  the http protocol was designed to just send a message and hang up.    In the early days of the web, this worked fine, there really was no means to create dynamic content, so it didn't matter.  Today, not so much.
 
-As I dug deeper, I found WebSockets to be incredibly powerful and have the potential for developing web 
-apps that have eliminate nearly all of the overhead and complexity that comes with ajax-first development.  It
-has an awe-inspiring "the world is my oyster" power that I've experienced only a few times as a 
-programmer (off the top of my head, it occurred with Visual FoxPro for Windows and Ruby.  And of course now Crystal).
+I happened to see a demo that showed how Kemal does a realtime chat and thought, "wow, that's actually a lot easier than I thought it would be."  It was a little spark.    What if an entire framework was written in the same way?  What if the server didn't just hang up every time I requested something.    
 
-In fact, your entire mindset changes - you stop thinking in terms of routing to pages that render a view, and start thinking in terms of events.  Elements on a page are wired directly from each end user to the object on the server and vice-versa.  A button click can instantly change server state, and those changes can instantly go to everyone viewing at that object.
+## Design Goals
 
-## Is This Thing Ready To Use For Anything?
+There are several design goals of lattice core.
+
+### Server Persistence
+
+Every connected object, be it a scoreboard, individual score, individual player (in short, an instance of `WebObject`) remains instantiated on the server while there are users interested in it.  Users are also remaining instantiated on the server.
+
+How do we know if there are users interested?  They `subscribe` to an WebObject.  This means that updates are sent to their browser.  Not subscribed?  You don't get those events.  It also means that actions (as defined by the server) are sent back to a real object on the server.  If two people click on the same game, a single `game_object` receives each event and can do its thing.  
+
+### Server Drives all Updates
+
+The way ajax (or other polling methods) work today, the browser decides if it is displaying the right data.  It goes and asks the server if we need to update this score.  It's backwards.    But we now have a direct line to every browser, so the server itself can update the browser.  
+
+### Everything is Object Oriented
+
+Every `web_object` has a `#to_html` method, which creates the entire thing, element tags and all.  Creating an element is done entirely within `WebObject`, and all subscriptions handled automatically, and there are plenty of helper methods to tweak the output.    What makes this particularly appealing is you can simply create web_objects that contain other web_objects.
+
+For example, to create a scoreboard, it's as simple as this:
+
+```ruby
+class LeagueScores < Lattice::Connected::WebObject
+end
+
+class Scoreboard < Lattice::Connected::WebObject
+  property scores = [] of LeagueScores
+  scores << LeagueScores("nhl")
+  scores << LeagueScores("mlb")
+  scores << LeagueScores("nba")
+  scores << LeagueScores("nfl")
+  
+  def content
+    scores.map(&.to_html).join
+  end
+end
+```
+
+With that, you can now call `scoreboard.to_html` and have a ready-to-go chunk of html that will update in realtime. 
+
+## WebSockets
+
+This framework currently uses WebSockets as a message transport between client and server.  There are exactly two places messages are exchanged (`WebSocket#on_message` and `WebSocket#send`, and they are simply strings.
+
+This means it'll be trivial to use other realtime, two-way technologies (http/2, webRTC, whatever's next) as it becomes available for Crystal.  
+
+
+
+# Is This Thing Ready To Use For Anything?
 
 Yes, it's ready for experimentation, but that's about it.
 
@@ -77,3 +112,4 @@ For now, I suggest you look at card_game.  It will be maintained alongside latti
 ## Contributors
 
 - [Jason Landry](https://github.com/[your-github-name]) Jason Landry - creator, maintainer
+

@@ -24,6 +24,7 @@ module Lattice
       def subscribed(socket)
         puts "ObjectList (#{self.name}) subscribed sending max-children #{@max_items}"
         send_max = {"id"=>items_dom_id || dom_id,"attribute"=>"data-max-children","value"=>@max_items.to_s}
+        puts "SUBSCRIBED #{send_max.class}:  #{send_max}"
         self.as(WebObject).update_attribute(send_max, [socket])
       end
 
