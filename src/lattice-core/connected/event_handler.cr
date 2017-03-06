@@ -12,8 +12,8 @@ module Lattice
 
     def handle_event(event : IncomingEvent, target : WebObject)
       # testing new event_listener
-      if (action = event.action) && (listener = target.event_listeners[action]?)
-        listener.call event.component, event
+      if (action = event.action) && (listeners = target.event_listeners[action]?)
+        listeners.each &.call(event.component, event)
       end
       target.on_event event
       if (prop_tgt = target.propagate_event_to?)

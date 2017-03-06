@@ -31,7 +31,8 @@ module Lattice
       property name : String
       property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
       property? propagate_event_to : WebObject?
-      property event_listeners = {} of String=>Proc(String?, IncomingEvent,Nil)
+      alias EventProc = Proc(String?, IncomingEvent, Nil)
+      property event_listeners = {} of String=>Array(EventProc)
 
 
       def initialize(@name : String, @creator : WebObject? = nil)
@@ -68,9 +69,18 @@ module Lattice
         @@event_handler.handle_event(incoming, self)
       end
 
+      # event listeners on are procs that fire when an event has a particular event.action.  The
+      # basic goal is to mirror javascript's event model names as much as convenient, but to expand
+      # or change that as required to create new functionaility.  Effectively, these events close 
+      # the loop:  we have add_event_listener here, and addEventListener in javascript
+      # 
+      # Since this is trying to mirror javascript, the data is stored for each event as an array
+      # of procs"
+      # { "click"=>[Proc<#123>, Proc<#102>], "mouseenter"=>[Proc<#12151231>] }
       def add_event_listener( action : String, &block : String?, IncomingEvent ->)
         puts "add_event_listener for #{action}"
-        event_listeners[action] = block
+        @event_listeners[action] = [] of EventProc unless @event_listeners[action]?
+        event_listeners[action] << block
       end
 
       def on_event( event : IncomingEvent)
