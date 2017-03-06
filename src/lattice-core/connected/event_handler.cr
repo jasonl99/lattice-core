@@ -4,13 +4,17 @@ module Lattice
 
      
     def send_event(event : OutgoingEvent)
-      puts "Sending #{event.message} to #{event.sockets.size} sockets"
+      # puts "Sending #{event.message} to #{event.sockets.size} sockets"
       WebSocket.send event.sockets, event.message.to_json
       event.source.observers.select {|o| o.is_a?(WebObject)}.each &.observe_event(event, event.source)
       event.source.class.observers.select {|o| o.is_a?(WebObject)}.each &.as(WebObject).observe_event(event, event.source)
     end
 
     def handle_event(event : IncomingEvent, target : WebObject)
+      # testing new event_listener
+      if (action = event.action) && (listener = target.event_listeners[action]?)
+        listener.call event.component, event
+      end
       target.on_event event
       if (prop_tgt = target.propagate_event_to?)
         prop_tgt.on_event event

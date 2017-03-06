@@ -10,7 +10,7 @@ module Lattice
     abstract class Event
       property created = Time.now
       def debug(str)
-        puts "#{self.class}: #{str}".colorize(:blue).on(:white)
+        # puts "#{self.class}: #{str}".colorize(:blue).on(:white)
       end
     end
 

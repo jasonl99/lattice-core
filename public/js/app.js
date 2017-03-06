@@ -254,6 +254,7 @@ function modifyDOM(domData) {
           el.classList.add(domData.value)
           break;
         case "remove_class":
+          console.log("Removing class " + domData.value + " from " + domData.id)
           el.classList.remove(domData.value)
           break;
         case "value":

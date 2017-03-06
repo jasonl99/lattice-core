@@ -31,6 +31,8 @@ module Lattice
       property name : String
       property auto_add_content = true  # any data-item that is subscribed gets #content on subscribion
       property? propagate_event_to : WebObject?
+      property event_listeners = {} of String=>Proc(String?, IncomingEvent,Nil)
+
 
       def initialize(@name : String, @creator : WebObject? = nil)
         if (creator = @creator)
@@ -59,11 +61,16 @@ module Lattice
 
       def handle_event( incoming : IncomingEvent )
         if incoming.action == "subscribe" && (sock = incoming.user.socket) && (sess = incoming.user.session.id)
-          puts "Subscribing to #{self}".colorize(:red).on(:white)
+         # puts "Subscribing to #{self}".colorize(:red).on(:white)
           subscribe(sock, sess) # this needs to be worked on.  Not sure this is the right place for subs
         else
         end
         @@event_handler.handle_event(incoming, self)
+      end
+
+      def add_event_listener( action : String, &block : String?, IncomingEvent ->)
+        puts "add_event_listener for #{action}"
+        event_listeners[action] = block
       end
 
       def on_event( event : IncomingEvent)
@@ -187,7 +194,6 @@ module Lattice
       # send a message to given sockets
       def send(msg : Message, sockets : Array(HTTP::WebSocket))
 
-        puts "Sending class #{msg.class}".colorize(:red).on(:white)
         OutgoingEvent.new(
           message: msg,
           sockets: sockets,
