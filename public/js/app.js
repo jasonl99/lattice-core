@@ -6,7 +6,6 @@ connected_object.onclose = function(evt) { console.log("Connected Socket closed"
 
 document.addEventListener("DOMContentLoaded", function(evt) {
   connected_object.onopen = function(evt) {
-    console.log("Socket connecting, configuring for updates..")
     addSubscribers(document.querySelector("body"), self.target)
     connectEvents()
   };
@@ -39,22 +38,27 @@ function baseEvent(evt,event_action, action_params = {}) {
   return msg
 
 }
-// outgoing events look like this:// {"some-data-item": {action: "click", params: {x:123, y:232}}}
-// On the server, the key is parsed for a valid, instantiated connectedObject
+//
+//
+function emitLatticeEvent(target, data = {}) {
+  latticeEvent = new CustomEvent("lattice", {bubbles: true, detail: data})
+  target.dispatchEvent(latticeEvent)
+}
+// outgoing events look like this:// {"some-data-item": {action: "click", params: {x:123, y:232}}} On the server, the key is parsed for a valid, instantiated connectedObject
 // that is subscribed to, and the action_parameters sent.
 function handleEvent(event_type, el, socket, options = {formReset: true}) {
   switch (event_type) {
     case "click":
-      console.log("Handling click event", el)
       el.addEventListener("click", function(evt) {
+        emitLatticeEvent(el, {handled: true}) 
         msg = baseEvent(evt,"click")
         sendEvent(msg,socket)
-        console.log("Clicked!", msg)
         // socket.send(JSON.stringify(msg))
       })
       break;
     case "input":
       el.addEventListener("input", function(evt) {
+        emitLatticeEvent(el, {handled: true}) 
         msg = baseEvent(evt,"input", {value: el.value})
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
@@ -62,6 +66,7 @@ function handleEvent(event_type, el, socket, options = {formReset: true}) {
       break;
     case "mouseleave":
       el.addEventListener("mouseleave", function(evt) {
+        emitLatticeEvent(el, {handled: true}) 
         msg = baseEvent(evt,"mouseleave")
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
@@ -69,16 +74,17 @@ function handleEvent(event_type, el, socket, options = {formReset: true}) {
       break;
     case "mouseenter":
       el.addEventListener("mouseenter", function(evt) {
+        emitLatticeEvent(el, {handled: true}) 
         msg = baseEvent(evt,"mouseenter")
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
       })
     case "submit":
       el.addEventListener("submit", function(evt) {
+        emitLatticeEvent(el, {handled: true}) 
         evt.preventDefault();
         evt.stopPropagation();
         msg = baseEvent(evt, "submit", formToJSON(el))
-        // console.log("Submitting:", msg)
         sendEvent(msg,socket)
         // socket.send(JSON.stringify(msg))
         if (options.formReset) {
@@ -86,6 +92,9 @@ function handleEvent(event_type, el, socket, options = {formReset: true}) {
         }
       })
       break;
+    default:
+        emitLatticeEvent(el, {eventType: event_type, handled: false}) 
+
   }
 }
 
@@ -115,7 +124,6 @@ function getItems(item_list) {
 function handleElementEvents(el,socket) {
   event_types = getItems(el.getAttribute("data-events"));
   for (var i=0; i<event_types.length;i++) {
-    console.log("Handling",event_types[i],el)
     handleEvent(event_types[i],el, socket)
   }
 }
@@ -151,7 +159,6 @@ function connectEvents(el = document.querySelector("body"), socket = connected_o
   // }
 
   // formElements = el.querySelectorAll("[data-item] form input[name]")
-  // // console.log("form elements", formElements)
   // for (var i=0; i<formElements.length; i++) {
   //   el = formElements[i]
   //   nearest_item = el.closest("[data-item]").getAttribute("data-item")
@@ -180,11 +187,9 @@ function connectEvents(el = document.querySelector("body"), socket = connected_o
 function handleSocketMessage(message, evt) {
   payload = JSON.parse(message);
   if ("dom" in payload) {
-    // console.log("ServerClient Dom: ", payload.dom)
     modifyDOM(payload.dom);
   }
   if ("act" in payload) {
-    // console.log("ServerClient Act: ", payload.act)
     takeAction(payload.act);
   }
   if ("error" in payload) {
@@ -207,6 +212,8 @@ function takeAction(domData) {
         case "resetForm":
           el.reset();
           break;
+        default:
+          emitLatticeEvent(el, {action: domData.action, data: domData, handled: false}) 
       }
     }
   } else {
@@ -254,7 +261,6 @@ function modifyDOM(domData) {
           el.classList.add(domData.value)
           break;
         case "remove_class":
-          console.log("Removing class " + domData.value + " from " + domData.id)
           el.classList.remove(domData.value)
           break;
         case "value":
