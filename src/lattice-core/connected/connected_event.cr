@@ -4,7 +4,25 @@ module Lattice
 
     # Messages are outgoing hashes.  Start restrtively, and expand as needed.
     #{"a"=>"b", x={"y"=>"z"}}
-    alias Message = Hash(String,String | Hash(String,String))
+    #IMPORTANT: https://github.com/crystal-lang/crystal/issues/4118
+    # this issue explains the reason it's trick to go between JSON (untyped) and Crystal (typed)
+    # the end result is that Messages must be specifically typed
+    # alias Message = Hash(String, String | Int32 | Float64 | Message)
+
+    # alias BaseMessage = Hash(String, String ) | Hash(String, Int32 ) | Hash(String, Int64 ) | Hash(String, Float64 ) | Hash(String, String | Int32 ) | Hash(String, String | Int64 ) | Hash(String, String | Float64 ) | Hash(String, Int32 | Int64 ) | Hash(String, Int32 | Float64 ) | Hash(String, Int64 | Float64 ) | Hash(String, String | Int32 | Int64 ) | Hash(String, String | Int32 | Float64 ) | Hash(String, String | Int64 | Float64 ) | Hash(String, Int32 | Int64 | Float64 ) | Hash(String, String | Int32 | Int64 | Float64 )
+    # alias Message = BaseMessage | Hash(String, BaseMessage)
+
+    # alias StringMessage = Hash(String, String)
+    # alias Int32Message = Hash(String, Int32)
+    # alias Float64Message = Hash(String, Float64)
+    # alias BaseMessage = Hash(String, String | Float64 | Int32 | StringMessage | Int32Message | Float64Message)
+    # alias Message = BaseMessage | 
+    #   Hash(String, BaseMessage) | 
+    #   Hash(String, Hash(String, String)) |
+    #   Hash(String, Hash(String, String | Float64))
+    alias Message = Hash(String, Hash(String, String)) |
+                    Hash(String, Hash(String, String | Float64))
+
     alias UserMessage = Hash(String,JSON::Type)
 
     abstract class Event
@@ -32,11 +50,9 @@ module Lattice
           @message = JSON.parse(@input).as_h
           debug "UserEvent #{@message} created with #{@input} for #{@user}"
         rescue
-          error = Message.new
-          error["error"] = "could not convert incoming message to JSON"
-          error["source"] = @input[0..200] # limit the amount we capture for now
-          error["user"] = @user.to_s
-          @error = error
+          error = {"error"=>"could not convert incoming message to JSON",
+                   "source"=> @input[0..199],
+                   "user"=>@user.to_s }
           debug "Error creating UserEvent: #{@error}"
         end
         incoming_event if valid?
@@ -100,9 +116,19 @@ module Lattice
     class OutgoingEvent < Event
 
       # can't figure out how to cast to Message (Hash(String,JSON::Type) from Hash(String,Hash(String,String))
-      property message : Message | Hash(String, Hash(String, String))  
+      # property message : Message # | Hash(String, Hash(String, String))  
+      @message : Message # : Message # | Hash(String, Hash(String, String))  
       property sockets : Array(HTTP::WebSocket)
       property source : WebObject
+
+
+      def message
+        @message
+      end
+
+      def message=(val)
+        @message = val
+      end
 
       def initialize(@message, @sockets, @source)
         debug "new OutgoingEvent: #{@message} for #{sockets.size} sockets sending to handler"

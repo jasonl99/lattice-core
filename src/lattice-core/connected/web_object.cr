@@ -202,7 +202,8 @@ module Lattice
       end
 
       # send a message to given sockets
-      def send(msg : Message, sockets : Array(HTTP::WebSocket))
+      #def send(msg : Message, sockets : Array(HTTP::WebSocket))
+      def send(msg , sockets : Array(HTTP::WebSocket))
 
         OutgoingEvent.new(
           message: msg,
@@ -238,7 +239,7 @@ module Lattice
 
       #-----------------------------------------------------------------------------------------
       # these go out to the sockets and would have a javascript handler on the users' browser
-      def remove_class( change : Hash(String,String), subscribers : Array(HTTP::WebSocket) = self.subscribers )
+      def remove_class( change : Hash(String,JSON::Type), subscribers : Array(HTTP::WebSocket) = self.subscribers )
        # try merging in other direction to eliminate needing the id
         msg = { "dom"=>{"id"=>dom_id,"action"=>"remove_class"}.merge(change) }
         send msg, subscribers
