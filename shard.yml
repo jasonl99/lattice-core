@@ -7,7 +7,6 @@ dependencies:
     branch: master
   kemal:
     github: kemalcr/kemal
-    branch: next
   kemal-session:
     github: jasonl99/kemal-session
     branch: master
